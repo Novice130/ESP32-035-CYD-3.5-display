@@ -46,8 +46,15 @@ project: `examples/pokemon-kalos/` (framebuffer engine, art pipeline, simulator,
    - Use the scratchpad dir for frames, never the repo.
 6. Build, flash, then read serial for ~20 s (reset via RTS with pyserial from `.venv/bin/python`):
    expect heap print + `[ESP32-035] NN fps`. The user must confirm the screen and touch by eye.
-7. Docs: `examples/<name>/README.md` (controls table, features, build, how to edit art) + screenshot sheet
-   from the sim in `docs/`; add the example to root `README.md` (tree, env table, flash command).
+7. Docs: `examples/<name>/README.md` (controls table, features, build, how to edit art) + screenshot in
+   `examples/<name>/docs/screenshot.png`; add the example to root `README.md` (tree, env table, flash
+   command, Screenshots gallery table).
+   - Screenshot ANY example (even ones drawing straight to TFT_eSPI) with the emulator:
+     `tools/cyd-emu/shoot.sh examples/<name> examples/<name>/docs/screenshot 6000` → `..._6000.png`
+     (rename to `screenshot.png`). Runs real TFT_eSPI against stub Arduino/SPI headers and decodes the
+     ST7796 command stream. Read the PNG before publishing — it caught a real colour bug in Mario.
+   - Gotcha it revealed: `pushImage()` with normal RGB565 arrays needs `tft.setSwapBytes(true)`,
+     otherwise sprite colours come out byte-swapped on the real board.
 8. Don't commit unless asked.
 
 ## Conventions the user liked

@@ -69,6 +69,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 ├── platformio.ini                 # Multi-environment PlatformIO build configuration
 ├── docs/                          # Physical board photos and diagrams
 ├── src/main.cpp                   # Hardware Verification & Pinout Diagnostics Suite
+├── tools/cyd-emu/                 # Desktop emulator: screenshots of any example without hardware
 └── examples/
     ├── mario-arcade/              # Standalone Super Mario Bros arcade runner
     ├── pokemon-kalos/             # Standalone POKéMON Kalos tribute (display + tap-to-play)
@@ -89,6 +90,17 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | **Rasengan Ki Energy Vortex** | `[env:rasengan_vortex]` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
 | **Digital Katakana Matrix Rain** | `[env:matrix_rain]` | 28 cascading vertical columns of Japanese Katakana code with glowing white lead drops and phosphor green trails. | [`examples/matrix-rain/`](examples/matrix-rain/) |
 | **NOC Infrastructure Monitor** | `[env:noc_dashboard]` | Enterprise server and network monitor with live TCP probes, uptime counter, and RAM telemetry. | [`examples/noc-dashboard/`](examples/noc-dashboard/) |
+
+### 🖼️ Screenshots
+
+<table>
+<tr><td align="center"><a href="examples/pokemon-kalos/"><img src="examples/pokemon-kalos/docs/screens.png" width="380" alt="POKéMON Kalos Tribute"></a><br><b>POKéMON Kalos Tribute</b></td><td align="center"><a href="examples/mario-arcade/"><img src="examples/mario-arcade/docs/screenshot.png" width="380" alt="Super Mario Bros Arcade"></a><br><b>Super Mario Bros Arcade</b></td></tr>
+<tr><td align="center"><a href="examples/neo-tokyo-synthwave/"><img src="examples/neo-tokyo-synthwave/docs/screenshot.png" width="380" alt="Neo-Tokyo Synthwave"></a><br><b>Neo-Tokyo Synthwave</b></td><td align="center"><a href="examples/manga-aura/"><img src="examples/manga-aura/docs/screenshot.png" width="380" alt="Manga Ultra Instinct"></a><br><b>Manga Ultra Instinct</b></td></tr>
+<tr><td align="center"><a href="examples/rasengan-vortex/"><img src="examples/rasengan-vortex/docs/screenshot.png" width="380" alt="Rasengan Vortex"></a><br><b>Rasengan Vortex</b></td><td align="center"><a href="examples/matrix-rain/"><img src="examples/matrix-rain/docs/screenshot.png" width="380" alt="Matrix Rain"></a><br><b>Matrix Rain</b></td></tr>
+<tr><td align="center"><a href="examples/noc-dashboard/"><img src="examples/noc-dashboard/docs/screenshot.png" width="200" alt="NOC Dashboard (portrait)"></a><br><b>NOC Dashboard (portrait)</b></td><td align="center"><a href="src/main.cpp"><img src="docs/images/diagnostics_screen.png" width="380" alt="Hardware Diagnostics (root firmware)"></a><br><b>Hardware Diagnostics (root firmware)</b></td></tr>
+</table>
+
+<sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library.</sub>
 
 ---
 

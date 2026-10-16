@@ -351,6 +351,7 @@ void setup() {
     // 5. TFT Display Initialisation (Standard Working Landscape Rotation 1)
     tft.init();
     tft.setRotation(1); // Rotation 1 is the verified working 480x320 landscape orientation
+    tft.setSwapBytes(true); // sprite buffers hold normal RGB565; without this pushImage shows swapped colours
     Serial.printf("[ESP32-035] TFT Initialized (%dx%d).\n", tft.width(), tft.height());
 
     // 6. Touch Controller Initialisation

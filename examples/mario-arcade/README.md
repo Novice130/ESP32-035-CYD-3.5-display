@@ -6,6 +6,9 @@
 
 Autonomous self-playing **Super Mario Bros** arcade screensaver with interactive touch controls designed for the **ESP32-035 (CYD 3.5" / ST7796 480x320)** display.
 
+
+<img src="docs/screenshot.png" alt="Super Mario Bros Arcade screenshot" width="480">
+
 ---
 
 ## 🎮 Features

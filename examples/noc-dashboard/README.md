@@ -1,5 +1,7 @@
 # 📊 NOC IT Infrastructure & System Diagnostics Monitor
 
+<img src="docs/screenshot.png" alt="NOC Dashboard screenshot" width="320">
+
 Dual-screen enterprise network monitor featuring:
 - 4 customizable server / infrastructure cards showing Name, IP, Role, and Status badge.
 - Live ambient room light percentage from the onboard LDR (GPIO 34).
