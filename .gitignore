@@ -1,0 +1,20 @@
+# PlatformIO build artifacts & cache
+.pio/
+.platformio/
+
+# Python Virtual Environment
+.venv/
+*.pyc
+__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sensitive local network & WiFi configuration
+include/config.h
+
+# Compiled binary files
+*.bin
+*.elf
+*.hex
