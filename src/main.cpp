@@ -1,6 +1,6 @@
 // ==============================================================================
 // Project: ESP32-035 / CYD 3.5" (ESP32-3248S035R) Multi-Screen Dashboard
-// Role:    NOC IT Infrastructure & Hardware Diagnostics Monitor
+// Role:    NOC IT Infrastructure & Live Network Diagnostics Monitor
 // Hardware: ESP32-WROOM-32, 3.5" 480x320 TFT (ST7796), XPT2046 Touch, RGB LED, LDR
 // ==============================================================================
 
@@ -18,7 +18,7 @@
 #endif
 
 // --- PIN DEFINITIONS FOR CYD 3.5" (ESP32-035) ---
-#define CYD_BACKLIGHT   27   // Backlight is GPIO 27 (NOT GPIO 21 like the 2.8" CYD)
+#define CYD_BACKLIGHT   27   // Backlight is GPIO 27 (Drives transistor Q2)
 #define CYD_LED_RED     4
 #define CYD_LED_GREEN   16
 #define CYD_LED_BLUE    17
@@ -41,12 +41,29 @@ enum ScreenState {
     SCREEN_DIAGNOSTICS = 1
 };
 
+struct ServerNode {
+    const char* name;
+    const char* ip;
+    uint16_t port;
+    const char* role;
+    bool isOnline;
+    int latencyMs;
+};
+
+// Server Nodes definition
+ServerNode nodes[4] = {
+    {NODE_1_NAME, NODE_1_IP, NODE_1_PORT, NODE_1_ROLE, false, -1},
+    {NODE_2_NAME, NODE_2_IP, NODE_2_PORT, NODE_2_ROLE, false, -1},
+    {NODE_3_NAME, NODE_3_IP, NODE_3_PORT, NODE_3_ROLE, false, -1},
+    {NODE_4_NAME, NODE_4_IP, NODE_4_PORT, NODE_4_ROLE, false, -1}
+};
+
 // Hardware Instances
 TFT_eSPI tft = TFT_eSPI();
 SPIClass touchSPI = SPIClass(HSPI);
 XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 
-// Global Variables
+// Global State
 ScreenState currentScreen = SCREEN_DASHBOARD;
 unsigned long lastSensorRead = 0;
 unsigned long ledTurnOffTime = 0;
@@ -55,6 +72,10 @@ int touchColorIndex = 0;
 int touchCount = 0;
 int lastTouchX = -1;
 int lastTouchY = -1;
+
+// Internet reachability
+bool internetOnline = false;
+int internetLatencyMs = -1;
 
 // Color Palette for RGB LED
 const char* colorNames[] = {"RED", "GREEN", "BLUE", "CYAN", "YELLOW", "MAGENTA", "WHITE"};
@@ -74,30 +95,92 @@ void triggerLEDFlash() {
     bool b = (touchColorIndex == 2 || touchColorIndex == 3 || touchColorIndex == 5 || touchColorIndex == 6);
     setRGB(r, g, b);
     ledIsActive = true;
-    ledTurnOffTime = millis() + 400; // Keep illuminated for 400ms after touch
+    ledTurnOffTime = millis() + 350; // Keep illuminated for 350ms
+}
+
+// -----------------------------------------------------------------------------
+// BACKGROUND NETWORK TASK (Runs independently on ESP32 Core 0)
+// -----------------------------------------------------------------------------
+void networkTask(void* pvParameters) {
+    if (strlen(WIFI_SSID) > 0) {
+        Serial.printf("[WiFi] Initializing connection to SSID: %s\n", WIFI_SSID);
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    }
+
+    for (;;) {
+        if (WiFi.status() == WL_CONNECTED) {
+            // 1. Probe Public Internet via DNS port (1.1.1.1:53)
+            WiFiClient testClient;
+            testClient.setTimeout(1);
+            unsigned long tStart = millis();
+            if (testClient.connect("1.1.1.1", 53, 500)) {
+                internetOnline = true;
+                internetLatencyMs = millis() - tStart;
+                testClient.stop();
+            } else {
+                internetOnline = false;
+                internetLatencyMs = -1;
+            }
+
+            // 2. Probe Infrastructure Nodes
+            for (int i = 0; i < 4; i++) {
+                WiFiClient nodeClient;
+                nodeClient.setTimeout(1);
+                unsigned long nStart = millis();
+                if (nodeClient.connect(nodes[i].ip, nodes[i].port, 450)) {
+                    nodes[i].isOnline = true;
+                    nodes[i].latencyMs = millis() - nStart;
+                    nodeClient.stop();
+                } else {
+                    nodes[i].isOnline = false;
+                    nodes[i].latencyMs = -1;
+                }
+                vTaskDelay(pdMS_TO_TICKS(80)); // Brief pause between probes
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(8000)); // Probe cycle every 8 seconds
+    }
 }
 
 // -----------------------------------------------------------------------------
 // UI RENDERING: SCREEN 0 - DASHBOARD OVERVIEW
 // -----------------------------------------------------------------------------
-void drawServerCard(int y, const char* name, const char* ip, const char* role, const char* status, uint16_t statusColor) {
+void drawServerCard(int y, const ServerNode& node) {
     // Card background
     tft.fillRoundRect(8, y, 464, 42, 6, tft.color565(20, 26, 36));
     tft.drawRoundRect(8, y, 464, 42, 6, tft.color565(45, 55, 72));
 
-    // Server Name & Role
+    // Server Name & IP / Role
     tft.setTextColor(TFT_WHITE, tft.color565(20, 26, 36));
-    tft.drawString(name, 20, y + 8, 4);
+    tft.drawString(node.name, 20, y + 8, 4);
 
     char descBuf[64];
-    snprintf(descBuf, sizeof(descBuf), "%s  |  %s", ip, role);
+    snprintf(descBuf, sizeof(descBuf), "%s  |  %s", node.ip, node.role);
     tft.setTextColor(tft.color565(160, 174, 192), tft.color565(20, 26, 36));
     tft.drawString(descBuf, 20, y + 26, 2);
 
+    // Determine status badge color and text
+    uint16_t statusColor;
+    char statusBuf[24];
+
+    if (WiFi.status() == WL_CONNECTED) {
+        if (node.isOnline) {
+            statusColor = TFT_GREEN;
+            snprintf(statusBuf, sizeof(statusBuf), "ONLINE %dms", node.latencyMs);
+        } else {
+            statusColor = tft.color565(239, 68, 68); // Soft Red
+            snprintf(statusBuf, sizeof(statusBuf), "OFFLINE");
+        }
+    } else {
+        statusColor = tft.color565(56, 189, 248); // Cyan Standby
+        snprintf(statusBuf, sizeof(statusBuf), "STANDBY");
+    }
+
     // Status Pill
-    tft.fillRoundRect(366, y + 9, 96, 24, 12, statusColor);
+    tft.fillRoundRect(352, y + 9, 110, 24, 12, statusColor);
     tft.setTextColor(TFT_BLACK, statusColor);
-    tft.drawCentreString(status, 414, y + 13, 2);
+    tft.drawCentreString(statusBuf, 407, y + 13, 2);
 }
 
 void drawDashboard() {
@@ -111,17 +194,31 @@ void drawDashboard() {
     tft.setTextColor(tft.color565(56, 189, 248), tft.color565(15, 23, 42));
     tft.drawString(NOC_TITLE, 14, 8, 4);
 
+    // WiFi Indicator in Header
+    if (WiFi.status() == WL_CONNECTED) {
+        tft.fillCircle(250, 19, 4, TFT_GREEN);
+        tft.setTextColor(TFT_GREEN, tft.color565(15, 23, 42));
+        tft.drawString("WiFi Live", 260, 11, 2);
+    } else if (strlen(WIFI_SSID) > 0) {
+        tft.fillCircle(250, 19, 4, TFT_YELLOW);
+        tft.setTextColor(TFT_YELLOW, tft.color565(15, 23, 42));
+        tft.drawString("WiFi Connecting", 260, 11, 2);
+    } else {
+        tft.fillCircle(250, 19, 4, tft.color565(100, 116, 139));
+        tft.setTextColor(tft.color565(148, 163, 184), tft.color565(15, 23, 42));
+        tft.drawString("WiFi Standby", 260, 11, 2);
+    }
+
     // Switch Screen Button in Top Right
-    tft.fillRoundRect(340, 6, 130, 26, 4, tft.color565(30, 41, 59));
-    tft.drawRoundRect(340, 6, 130, 26, 4, tft.color565(56, 189, 248));
+    tft.fillRoundRect(365, 6, 105, 26, 4, tft.color565(30, 41, 59));
+    tft.drawRoundRect(365, 6, 105, 26, 4, tft.color565(56, 189, 248));
     tft.setTextColor(TFT_WHITE, tft.color565(30, 41, 59));
-    tft.drawCentreString("System Info >", 405, 11, 2);
+    tft.drawCentreString("System Info >", 417, 11, 2);
 
     // 4 Server Cards
-    drawServerCard(46,  NODE_1_NAME, NODE_1_IP, NODE_1_ROLE, "ONLINE",  TFT_GREEN);
-    drawServerCard(96,  NODE_2_NAME, NODE_2_IP, NODE_2_ROLE, "ACTIVE",  TFT_GREEN);
-    drawServerCard(146, NODE_3_NAME, NODE_3_IP, NODE_3_ROLE, "ACTIVE",  TFT_GREEN);
-    drawServerCard(196, NODE_4_NAME, NODE_4_IP, NODE_4_ROLE, "HEALTHY", tft.color565(56, 189, 248));
+    for (int i = 0; i < 4; i++) {
+        drawServerCard(46 + (i * 50), nodes[i]);
+    }
 
     // Bottom Telemetry Bar
     tft.fillRect(0, 252, SCREEN_W, 68, tft.color565(15, 23, 42));
@@ -145,7 +242,7 @@ void drawDashboard() {
 }
 
 // -----------------------------------------------------------------------------
-// UI RENDERING: SCREEN 1 - HARDWARE & DIAGNOSTICS
+// UI RENDERING: SCREEN 1 - HARDWARE & NETWORK DIAGNOSTICS
 // -----------------------------------------------------------------------------
 void drawDiagnostics() {
     tft.fillScreen(tft.color565(10, 14, 23));
@@ -162,29 +259,56 @@ void drawDiagnostics() {
 
     // Title
     tft.setTextColor(tft.color565(56, 189, 248), tft.color565(15, 23, 42));
-    tft.drawString("HARDWARE & DIAGNOSTICS", 120, 8, 4);
+    tft.drawString("SYSTEM & NETWORK DIAGNOSTICS", 115, 8, 4);
 
     // Card 1: Board & Chipset Information
     tft.fillRoundRect(8, 46, 226, 96, 6, tft.color565(20, 26, 36));
     tft.drawRoundRect(8, 46, 226, 96, 6, tft.color565(45, 55, 72));
     tft.setTextColor(tft.color565(56, 189, 248), tft.color565(20, 26, 36));
-    tft.drawString("BOARD & MCU", 16, 52, 2);
+    tft.drawString("BOARD & HARDWARE", 16, 52, 2);
     tft.setTextColor(TFT_WHITE, tft.color565(20, 26, 36));
     tft.drawString("Model: ESP32-035 (3.5\" CYD)", 16, 70, 1);
-    tft.drawString("SoC: ESP32 Dual-Core 240MHz", 16, 84, 1);
-    tft.drawString("Flash: 4MB DIO 40MHz", 16, 98, 1);
-    tft.drawString("Silkscreen: ESP32-035", 16, 112, 1);
+    tft.drawString("MCU: ESP32 Dual-Core 240MHz", 16, 84, 1);
+    tft.drawString("Display: 3.5\" 480x320 ST7796", 16, 98, 1);
+    tft.drawString("Backlight: GPIO 27 (Transistor)", 16, 112, 1);
 
-    // Card 2: Display & Bus Specifications
+    // Card 2: Live Network & WiFi Telemetry
     tft.fillRoundRect(244, 46, 228, 96, 6, tft.color565(20, 26, 36));
     tft.drawRoundRect(244, 46, 228, 96, 6, tft.color565(45, 55, 72));
     tft.setTextColor(tft.color565(56, 189, 248), tft.color565(20, 26, 36));
-    tft.drawString("DISPLAY & SPI BUS", 252, 52, 2);
+    tft.drawString("NETWORK STATUS", 252, 52, 2);
     tft.setTextColor(TFT_WHITE, tft.color565(20, 26, 36));
-    tft.drawString("Panel: 3.5\" TFT 480x320 HVGA", 252, 70, 1);
-    tft.drawString("Driver: ST7796 / ILI9488", 252, 84, 1);
-    tft.drawString("Backlight: GPIO 27 (Active HIGH)", 252, 98, 1);
-    tft.drawString("SPI Bus: HSPI @ 40MHz", 252, 112, 1);
+
+    if (WiFi.status() == WL_CONNECTED) {
+        char ipBuf[40];
+        snprintf(ipBuf, sizeof(ipBuf), "IP: %s", WiFi.localIP().toString().c_str());
+        tft.drawString(ipBuf, 252, 70, 1);
+
+        char rssiBuf[40];
+        snprintf(rssiBuf, sizeof(rssiBuf), "SSID: %s (%d dBm)", WIFI_SSID, WiFi.RSSI());
+        tft.drawString(rssiBuf, 252, 84, 1);
+
+        char gwBuf[40];
+        snprintf(gwBuf, sizeof(gwBuf), "Gateway: %s", WiFi.gatewayIP().toString().c_str());
+        tft.drawString(gwBuf, 252, 98, 1);
+
+        if (internetOnline) {
+            char netBuf[40];
+            snprintf(netBuf, sizeof(netBuf), "Internet: ONLINE (%dms)", internetLatencyMs);
+            tft.setTextColor(TFT_GREEN, tft.color565(20, 26, 36));
+            tft.drawString(netBuf, 252, 112, 1);
+        } else {
+            tft.setTextColor(TFT_YELLOW, tft.color565(20, 26, 36));
+            tft.drawString("Internet: Connecting...", 252, 112, 1);
+        }
+    } else {
+        tft.drawString("WiFi: Not Connected", 252, 70, 1);
+        char ssidBuf[40];
+        snprintf(ssidBuf, sizeof(ssidBuf), "Target SSID: %s", WIFI_SSID);
+        tft.drawString(ssidBuf, 252, 84, 1);
+        tft.drawString("Status: Connecting / Standby", 252, 98, 1);
+        tft.drawString("Mode: Offline Telemetry", 252, 112, 1);
+    }
 
     // Card 3: Memory & Runtime Status
     tft.fillRoundRect(8, 150, 226, 96, 6, tft.color565(20, 26, 36));
@@ -201,14 +325,14 @@ void drawDiagnostics() {
     snprintf(minHeapBuf, sizeof(minHeapBuf), "Min Free Heap: %u KB", ESP.getMinFreeHeap() / 1024);
     tft.drawString(minHeapBuf, 16, 188, 1);
 
-    tft.drawString("WiFi: Standby / Ready", 16, 202, 1);
-    tft.drawString("Status: Running Normal", 16, 216, 1);
+    tft.drawString("SPI Bus: HSPI @ 40MHz", 16, 202, 1);
+    tft.drawString("Dual-Core Task: Core 0 Net", 16, 216, 1);
 
     // Card 4: Touch & Peripherals Subsystem
     tft.fillRoundRect(244, 150, 228, 96, 6, tft.color565(20, 26, 36));
     tft.drawRoundRect(244, 150, 228, 96, 6, tft.color565(45, 55, 72));
     tft.setTextColor(tft.color565(56, 189, 248), tft.color565(20, 26, 36));
-    tft.drawString("TOUCH & PERIPHERALS", 252, 156, 2);
+    tft.drawString("TOUCH & SENSORS", 252, 156, 2);
     tft.setTextColor(TFT_WHITE, tft.color565(20, 26, 36));
     tft.drawString("Touch Controller: XPT2046", 252, 174, 1);
     tft.drawString("Touch Pins: CS 33 | IRQ 36", 252, 188, 1);
@@ -237,14 +361,14 @@ void drawDiagnostics() {
 // -----------------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n[ESP32-035] Starting 3.5\" CYD Multi-Screen Dashboard...");
+    Serial.println("\n[ESP32-035] Starting Multi-Screen Live Dashboard...");
 
     // 1. Backlight: GPIO 27 on ESP32-035 (Drives Transistor Q2)
     pinMode(CYD_BACKLIGHT, OUTPUT);
     digitalWrite(CYD_BACKLIGHT, HIGH);
     Serial.println("[ESP32-035] Backlight GPIO 27 set HIGH.");
 
-    // 2. Configure Onboard RGB LED (Turn OFF initially - NO annoying blinking)
+    // 2. Configure Onboard RGB LED (Turn OFF initially)
     pinMode(CYD_LED_RED,   OUTPUT);
     pinMode(CYD_LED_GREEN, OUTPUT);
     pinMode(CYD_LED_BLUE,  OUTPUT);
@@ -268,19 +392,25 @@ void setup() {
     ts.setRotation(1);
     Serial.println("[ESP32-035] Touch Screen Initialized.");
 
-    // 7. Optional WiFi Initialization if configured
-    if (strlen(WIFI_SSID) > 0) {
-        Serial.printf("[WiFi] Connecting to %s...\n", WIFI_SSID);
-        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    }
-
-    // 8. Render Initial Dashboard Screen
+    // 7. Render Initial Dashboard Screen
     drawDashboard();
-    Serial.println("[ESP32-035] System Ready.");
+    Serial.println("[ESP32-035] Dashboard Rendered.");
+
+    // 8. Launch Background Network Task on Core 0
+    xTaskCreatePinnedToCore(
+        networkTask,    // Task function
+        "NetworkTask",  // Name of task
+        4096,           // Stack size in words
+        NULL,           // Task input parameter
+        1,              // Priority of the task
+        NULL,           // Task handle
+        0               // Pin to Core 0 (UI runs on Core 1)
+    );
+    Serial.println("[ESP32-035] Background Network Task Launched on Core 0.");
 }
 
 // -----------------------------------------------------------------------------
-// MAIN LOOP
+// MAIN LOOP (Runs on Core 1)
 // -----------------------------------------------------------------------------
 void loop() {
     unsigned long now = millis();
@@ -313,6 +443,11 @@ void loop() {
             char upBuf[32];
             snprintf(upBuf, sizeof(upBuf), "Uptime: %02lu:%02lu:%02lu  ", h, m, s);
             tft.drawString(upBuf, 230, 288, 2);
+
+            // Re-render server cards to update live ONLINE/OFFLINE status
+            for (int i = 0; i < 4; i++) {
+                drawServerCard(46 + (i * 50), nodes[i]);
+            }
         }
     }
 
@@ -330,16 +465,16 @@ void loop() {
         lastTouchX = touchX;
         lastTouchY = touchY;
 
-        // Always trigger an LED pulse and color cycle on tap!
+        // Trigger RGB LED pulse on tap
         triggerLEDFlash();
 
-        // SCREEN NAVIGATION LOGIC:
+        // SCREEN NAVIGATION:
         if (currentScreen == SCREEN_DASHBOARD) {
             // Check if top-right button "System Info >" was tapped
-            if (touchX >= 320 && touchY <= 45) {
+            if (touchX >= 340 && touchY <= 45) {
                 currentScreen = SCREEN_DIAGNOSTICS;
                 drawDiagnostics();
-                delay(200); // Debounce button tap
+                delay(200); // Debounce
                 return;
             }
 
@@ -359,7 +494,7 @@ void loop() {
             if (touchX <= 120 && touchY <= 45) {
                 currentScreen = SCREEN_DASHBOARD;
                 drawDashboard();
-                delay(200); // Debounce button tap
+                delay(200); // Debounce
                 return;
             }
 
@@ -375,6 +510,6 @@ void loop() {
             tft.drawString(touchInfo, 16, 288, 2);
         }
 
-        delay(80); // Touch debounce
+        delay(80); // Debounce
     }
 }
