@@ -60,40 +60,33 @@ Look at the silkscreen marking on the back of your PCB:
 
 ---
 
-## 🎮 Example Repositories & Interactive Firmware Hub
+## 📁 Repository Structure & Standalone Examples
 
-The default firmware on this board boots into an interactive **Repository Launcher Hub** on the display. You can tap any card to launch it live, or explore each example repository directly in the codebase:
+The root of this repository is dedicated solely to the **Physical Board Hardware Reference & Diagnostics Suite**. Every project and visual animation is isolated in its own self-contained sub-repository under `examples/` with dedicated source code, headers, and docs:
 
-| Repository / Project | Type | Description | Direct Link |
+```
+├── README.md                      # Physical board specifications & pinout guide
+├── platformio.ini                 # Multi-environment PlatformIO build configuration
+├── docs/                          # Physical board photos and diagrams
+├── src/main.cpp                   # Hardware Verification & Pinout Diagnostics Suite
+└── examples/
+    ├── mario-arcade/              # Standalone Super Mario Bros arcade runner
+    ├── manga-aura/                # Standalone Manga Ultra Instinct aura
+    ├── neo-tokyo-synthwave/       # Standalone 3D Synthwave wireframe grid
+    ├── rasengan-vortex/           # Standalone 3D Rasengan particle vortex
+    ├── matrix-rain/               # Standalone Digital Katakana matrix rain
+    └── noc-dashboard/             # Standalone Enterprise NOC telemetry dashboard
+```
+
+| Project / Environment | PlatformIO Env | Description | Direct Link |
 | :--- | :---: | :--- | :---: |
-| **Super Mario Bros Arcade** | `Game / Arcade` | Autonomous self-playing NES Mario runner. Tap screen or cover LDR to jump and shoot bouncing fireballs! Pixel-accurate 8-bit sprites and sound effects on GPIO 26. | [`examples/mario-arcade/`](examples/mario-arcade/) |
-| **Manga Ultra Instinct** | `Animation / Anime` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ / ドドド), and crackling electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
-| **Neo-Tokyo 2088 Synthwave** | `3D Wireframe` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
-| **Rasengan Ki Energy Vortex** | `3D Particles` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
-| **Digital Katakana Matrix Rain** | `Cyberpunk` | 28 cascading vertical columns of Japanese Katakana code with glowing white lead drops and phosphor green trails. | [`examples/matrix-rain/`](examples/matrix-rain/) |
-| **NOC Infrastructure Monitor** | `Telemetry / IoT` | Enterprise server and network monitor with live TCP probes, uptime counter, Free Heap RAM telemetry, and touch diagnostics. | [`examples/noc-dashboard/`](examples/noc-dashboard/) |
-
-> **Navigation Tip:** In any demo, tap the **`< Hub`** button in the top-right corner (or place your finger over the LDR photoresistor on GPIO 34) to return to the Main Repository Hub immediately.
-
----
-
-## 📱 Multi-Screen Dashboard Features
-
-This codebase includes a ready-to-use dual-screen interactive monitor:
-
-### Screen 0: Infrastructure Overview
-- 4 customizable server / infrastructure cards showing Name, IP, Role, and Status badge.
-- Live ambient room light percentage & raw ADC reading from the onboard LDR.
-- Real-time uptime counter.
-- **On-Tap RGB LED Flash**: The annoying continuous LED blinking is disabled. The LED flashes and cycles vibrant colors only when the screen or the bottom-right corner is tapped.
-- Top-right **`System Info >`** button toggles to the diagnostics screen.
-
-### Screen 1: Hardware & System Diagnostics
-- Live Free Heap RAM & Minimum Free Heap monitoring.
-- Board & SoC architecture specs (ESP32-D0WD-V3 @ 240MHz, 4MB Flash).
-- Display & SPI bus telemetry (ST7796, HSPI @ 40MHz).
-- Interactive touch testing pad with live (X, Y) coordinates and touch color indicator.
-- Top-left **`< Back`** button returns to the overview dashboard.
+| **Hardware Diagnostics** | `[env:cyd]` | Pinout verification, touch test, LDR light sensor, RGB LED cycle, and audio chime. | [`src/main.cpp`](src/main.cpp) |
+| **Super Mario Bros Arcade** | `[env:mario_arcade]` | Self-playing NES Mario runner with jump/fireball physics, 8-bit sprites & audio SFX. | [`examples/mario-arcade/`](examples/mario-arcade/) |
+| **Manga Ultra Instinct** | `[env:manga_aura]` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ), and electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
+| **Neo-Tokyo 2088 Synthwave** | `[env:neo_tokyo_synthwave]` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
+| **Rasengan Ki Energy Vortex** | `[env:rasengan_vortex]` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
+| **Digital Katakana Matrix Rain** | `[env:matrix_rain]` | 28 cascading vertical columns of Japanese Katakana code with glowing white lead drops and phosphor green trails. | [`examples/matrix-rain/`](examples/matrix-rain/) |
+| **NOC Infrastructure Monitor** | `[env:noc_dashboard]` | Enterprise server and network monitor with live TCP probes, uptime counter, and RAM telemetry. | [`examples/noc-dashboard/`](examples/noc-dashboard/) |
 
 ---
 
@@ -105,25 +98,34 @@ git clone https://github.com/Novice130/ESP32-035-CYD-3.5-display.git
 cd ESP32-035-CYD-3.5-display
 ```
 
-### 2. Configure Your Network / Server Settings
-Copy the example configuration file:
-```bash
-cp include/config.example.h include/config.h
-```
-Edit `include/config.h` with your own server names, IPs, and optional WiFi credentials.  
-*(Note: `include/config.h` is protected by `.gitignore` so your private credentials and internal IPs are never committed).*
-
-### 3. Build & Upload with PlatformIO
-Plug your `ESP32-035` into your computer using a USB Type-C data cable and run:
+### 2. Build & Upload Any Example
+Connect your `ESP32-035` via USB Type-C and build/flash the desired project:
 
 ```bash
-pio run -t upload
+# Flash the root Hardware Verification & Diagnostics Suite:
+pio run -e cyd -t upload
+
+# Flash the Super Mario Bros Arcade runner:
+pio run -e mario_arcade -t upload
+
+# Flash the Manga Ultra Instinct animation:
+pio run -e manga_aura -t upload
+
+# Flash the Neo-Tokyo Synthwave demo:
+pio run -e neo_tokyo_synthwave -t upload
+
+# Flash the Rasengan Vortex:
+pio run -e rasengan_vortex -t upload
+
+# Flash the Matrix Rain:
+pio run -e matrix_rain -t upload
+
+# Flash the NOC Infrastructure Monitor:
+pio run -e noc_dashboard -t upload
 ```
 
-Or using the included Python helper script:
-```bash
-python3 flash_cyd.py
-```
+*(For NOC Dashboard, copy `examples/noc-dashboard/include/config.example.h` to `config.h` to customize your WiFi and server endpoints).*
+
 
 ---
 

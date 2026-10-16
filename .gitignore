@@ -13,6 +13,8 @@ Thumbs.db
 
 # Sensitive local network & WiFi configuration
 include/config.h
+**/config.h
+
 
 # Compiled binary files
 *.bin
