@@ -60,6 +60,23 @@ Look at the silkscreen marking on the back of your PCB:
 
 ---
 
+## 🎮 Example Repositories & Interactive Firmware Hub
+
+The default firmware on this board boots into an interactive **Repository Launcher Hub** on the display. You can tap any card to launch it live, or explore each example repository directly in the codebase:
+
+| Repository / Project | Type | Description | Direct Link |
+| :--- | :---: | :--- | :---: |
+| **Super Mario Bros Arcade** | `Game / Arcade` | Autonomous self-playing NES Mario runner. Tap screen or cover LDR to jump and shoot bouncing fireballs! Pixel-accurate 8-bit sprites and sound effects on GPIO 26. | [`examples/mario-arcade/`](examples/mario-arcade/) |
+| **Manga Ultra Instinct** | `Animation / Anime` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ / ドドド), and crackling electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
+| **Neo-Tokyo 2088 Synthwave** | `3D Wireframe` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
+| **Rasengan Ki Energy Vortex** | `3D Particles` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
+| **Digital Katakana Matrix Rain** | `Cyberpunk` | 28 cascading vertical columns of Japanese Katakana code with glowing white lead drops and phosphor green trails. | [`examples/matrix-rain/`](examples/matrix-rain/) |
+| **NOC Infrastructure Monitor** | `Telemetry / IoT` | Enterprise server and network monitor with live TCP probes, uptime counter, Free Heap RAM telemetry, and touch diagnostics. | [`examples/noc-dashboard/`](examples/noc-dashboard/) |
+
+> **Navigation Tip:** In any demo, tap the **`< Hub`** button in the top-right corner (or place your finger over the LDR photoresistor on GPIO 34) to return to the Main Repository Hub immediately.
+
+---
+
 ## 📱 Multi-Screen Dashboard Features
 
 This codebase includes a ready-to-use dual-screen interactive monitor:
