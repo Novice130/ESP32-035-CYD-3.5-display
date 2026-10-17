@@ -71,7 +71,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 ├── src/main.cpp                   # Hardware Verification & Pinout Diagnostics Suite
 ├── tools/cyd-emu/                 # Desktop emulator: screenshots of any example without hardware
 └── examples/
-    ├── mario-arcade/              # Standalone Super Mario Bros arcade runner
+    ├── mario-arcade/              # Standalone Mario platformer tribute (plays itself, 3-button takeover)
     ├── pokemon-kalos/             # Standalone POKéMON Kalos tribute (display + tap-to-play)
     ├── manga-aura/                # Standalone Manga Ultra Instinct aura
     ├── neo-tokyo-synthwave/       # Standalone 3D Synthwave wireframe grid
@@ -83,7 +83,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | Project / Environment | PlatformIO Env | Description | Direct Link |
 | :--- | :---: | :--- | :---: |
 | **Hardware Diagnostics** | `[env:cyd]` | Pinout verification, touch test, LDR light sensor, RGB LED cycle, and audio chime. | [`src/main.cpp`](src/main.cpp) |
-| **Super Mario Bros Arcade** | `[env:mario_arcade]` | Self-playing NES Mario runner with jump/fireball physics, 8-bit sprites & audio SFX. | [`examples/mario-arcade/`](examples/mario-arcade/) |
+| **Super Mario Bros Arcade** | `[env:mario_arcade]` | Mario platformer tribute: 32 levels (8 worlds), power-ups, Goombas / Koopas / Piranhas, flagpole. Plays itself; press JUMP / FIRE / RUN on the right edge to take over. | [`examples/mario-arcade/`](examples/mario-arcade/) |
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Manga Ultra Instinct** | `[env:manga_aura]` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ), and electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
 | **Neo-Tokyo 2088 Synthwave** | `[env:neo_tokyo_synthwave]` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
@@ -119,7 +119,7 @@ Connect your `ESP32-035` via USB Type-C and build/flash the desired project:
 # Flash the root Hardware Verification & Diagnostics Suite:
 pio run -e cyd -t upload
 
-# Flash the Super Mario Bros Arcade runner:
+# Flash the Super Mario Bros Arcade platformer (plays itself, 3-button takeover):
 pio run -e mario_arcade -t upload
 
 # Flash the POKéMON Kalos tribute (display + tap-to-play):
