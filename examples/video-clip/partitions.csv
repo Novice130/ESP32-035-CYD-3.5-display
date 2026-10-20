@@ -1,0 +1,7 @@
+# ESP32-035 video-clip layout (4 MB flash): 1 MB app + 2.94 MB raw clip data.
+# clip.bin is written at 0x110000 by tools/flash_clip.sh, separately from the firmware.
+# Name,   Type, SubType, Offset,   Size
+nvs,      data, nvs,     0x9000,   0x5000
+otadata,  data, ota,     0xE000,   0x2000
+app0,     app,  ota_0,   0x10000,  0x100000
+clip,     data, 0x40,    0x110000, 0x2F0000
