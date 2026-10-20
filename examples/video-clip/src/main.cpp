@@ -63,7 +63,7 @@
 // rises in the dark. The room level is tracked slowly; rising LDR_COVER_RISE above it
 // counts as covered, and each cover jumps SKIP_MS ahead.
 #define LDR_DARK_IS_LOW   false // true if the ADC reading drops when the sensor is covered
-#define LDR_COVER_RISE    60    // measured on this board: room 0-30, fingertip over it 100-150
+#define LDR_COVER_RISE    60    // measured at 0 dB on this board: room 0, fingertip over it 60-500
 #define LDR_RELEASE_MS    150   // the covered reading flickers to 0; released = low this long
 #define SKIP_MS           4000
 
@@ -582,6 +582,7 @@ void setup() {
     pinMode(XPT2046_CS, OUTPUT);
     digitalWrite(XPT2046_CS, HIGH);
     pinMode(CYD_LDR_PIN, INPUT);
+    analogSetPinAttenuation(CYD_LDR_PIN, ADC_0db);   // 0-1.1 V: at 11 dB a covered sensor flickers to 0
 
     // 4. TFT Display Initialisation (Standard Working Landscape Rotation 1)
     tft.init();

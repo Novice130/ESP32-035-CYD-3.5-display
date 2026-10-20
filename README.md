@@ -74,6 +74,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
     ├── mario-arcade/              # Standalone Mario platformer tribute (plays itself, 3-button takeover)
     ├── pokemon-kalos/             # Standalone POKéMON Kalos tribute (display + tap-to-play)
     ├── video-clip/                # Standalone video clip player (JPEG frames + DAC audio from flash)
+    ├── cloud-game/                # Thin client: plays a game streamed from a server over Wi-Fi (Flappy tribute)
     ├── manga-aura/                # Standalone Manga Ultra Instinct aura
     ├── neo-tokyo-synthwave/       # Standalone 3D Synthwave wireframe grid
     ├── rasengan-vortex/           # Standalone 3D Rasengan particle vortex
@@ -87,6 +88,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | **Super Mario Bros Arcade** | `[env:mario_arcade]` | Mario platformer tribute: 32 levels (8 worlds), power-ups, Goombas / Koopas / Piranhas, flagpole. Plays itself; press JUMP / FIRE / RUN on the right edge to take over. | [`examples/mario-arcade/`](examples/mario-arcade/) |
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Video Clip Player** | `[env:video_clip]` | Plays a looping video clip with sound: JPEG frames zoomed 2x (240x136, 15 fps) or 3x (160x90, for ~2.5 min clips), 8-bit audio through the DAC on GPIO 26. Convert your own video with `tools/make_clip.py`, or stream a whole video over Wi-Fi from a server. 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s. | [`examples/video-clip/`](examples/video-clip/) |
+| **Cloud Game (Flappy tribute)** | `[env:cloud_game]` | The game runs on a Sipeed NanoKVM and streams 240x160 frames over Wi-Fi at 25-30 fps; this board draws them and sends back one button (cover the light sensor). | [`examples/cloud-game/`](examples/cloud-game/) |
 | **Manga Ultra Instinct** | `[env:manga_aura]` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ), and electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
 | **Neo-Tokyo 2088 Synthwave** | `[env:neo_tokyo_synthwave]` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
 | **Rasengan Ki Energy Vortex** | `[env:rasengan_vortex]` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
@@ -100,10 +102,10 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 <tr><td align="center"><a href="examples/neo-tokyo-synthwave/"><img src="examples/neo-tokyo-synthwave/docs/screenshot.png" width="380" alt="Neo-Tokyo Synthwave"></a><br><b>Neo-Tokyo Synthwave</b></td><td align="center"><a href="examples/manga-aura/"><img src="examples/manga-aura/docs/screenshot.png" width="380" alt="Manga Ultra Instinct"></a><br><b>Manga Ultra Instinct</b></td></tr>
 <tr><td align="center"><a href="examples/rasengan-vortex/"><img src="examples/rasengan-vortex/docs/screenshot.png" width="380" alt="Rasengan Vortex"></a><br><b>Rasengan Vortex</b></td><td align="center"><a href="examples/matrix-rain/"><img src="examples/matrix-rain/docs/screenshot.png" width="380" alt="Matrix Rain"></a><br><b>Matrix Rain</b></td></tr>
 <tr><td align="center"><a href="examples/noc-dashboard/"><img src="examples/noc-dashboard/docs/screenshot.png" width="200" alt="NOC Dashboard (portrait)"></a><br><b>NOC Dashboard (portrait)</b></td><td align="center"><a href="src/main.cpp"><img src="docs/images/diagnostics_screen.png" width="380" alt="Hardware Diagnostics (root firmware)"></a><br><b>Hardware Diagnostics (root firmware)</b></td></tr>
-<tr><td align="center"><a href="examples/video-clip/"><img src="examples/video-clip/docs/screenshot.png" width="380" alt="Video Clip Player (test pattern)"></a><br><b>Video Clip Player (test pattern)</b></td><td></td></tr>
+<tr><td align="center"><a href="examples/video-clip/"><img src="examples/video-clip/docs/screenshot.png" width="380" alt="Video Clip Player (test pattern)"></a><br><b>Video Clip Player (test pattern)</b></td><td align="center"><a href="examples/cloud-game/"><img src="examples/cloud-game/docs/screenshot.png" width="380" alt="Cloud Game: Flappy tribute"></a><br><b>Cloud Game: Flappy tribute (streamed)</b></td></tr>
 </table>
 
-<sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library. The Video Clip Player shows a frame of its built-in test pattern decoded the way the board draws it.</sub>
+<sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library. The Video Clip Player shows a frame of its built-in test pattern decoded the way the board draws it; the Cloud Game shows a frame rendered by its server's preview mode.</sub>
 
 ---
 
@@ -131,6 +133,9 @@ pio run -e pokemon_kalos -t upload
 # Flash the Video Clip player, then write a clip made with tools/make_clip.py into its flash area:
 pio run -e video_clip -t upload
 examples/video-clip/tools/flash_clip.sh clip.bin
+
+# Flash the Cloud Game thin client (needs examples/cloud-game/include/config.h and a game server):
+pio run -e cloud_game -t upload
 
 # Flash the Manga Ultra Instinct animation:
 pio run -e manga_aura -t upload
