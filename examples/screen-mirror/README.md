@@ -1,39 +1,131 @@
-# 🖥️ Screen Mirror: your computer's screen on the ESP32-035
+# 🖥️ Screen Mirror: your computer's screen on the little yellow display
 
-A live copy of a computer's screen (or one window, or one browser tab) on the 480x320 panel.
-Two ways to use it:
+<img src="docs/how-it-works.png" alt="A laptop sends its screen over a USB cable or Wi-Fi to the yellow ESP32 display, which shows the same picture" width="100%">
 
-- **🌐 Website** (any computer with Chrome or Edge, including Chromebooks): install, then share
-  over the USB cable or, after a one-time Wi-Fi setup, over Wi-Fi with no cable, from
-  **[the Screen Mirror website](https://novice130.github.io/ESP32-035-CYD-3.5-display/)**. Nothing to download or set up.
-- **📶 Wi-Fi from a Mac**: `tools/mirror.sh` sends the Mac's screen over Wi-Fi, no cable needed.
+Whatever is on your computer (a drawing, a video, a game, a slideshow) shows up live on the
+ESP32 "Cheap Yellow Display". You set it all up from a **website**: no programs to download.
 
-> 💡 **Thank you, Abdul Samad Idowu!** This project was Abdul Samad's idea: he's a grade 6 student
-> who asked whether the little yellow display could show what's on the computer. It can now.
+> 💡 **Thank you, Abdul Samad Idowu!** This project was Abdul Samad's idea. He's a grade 6
+> student who asked: *"Can the little yellow screen show what's on my computer?"* Now it can.
 
-## 🧒 Start here (for students)
+---
 
-The board becomes a tiny second screen. Whatever you share on the computer appears on it, live.
+## 🧒 Student guide
 
-You need: the CYD board, a USB cable that carries data (some cables only charge), and a computer
-with **Google Chrome** or **Microsoft Edge**.
+### What you need
 
-1. Plug the board into the computer.
-2. Open **https://novice130.github.io/ESP32-035-CYD-3.5-display/**
-3. **Step 1 on the page:** click **Install Screen Mirror**, pick your board, click **Install**.
-   Wait about a minute. (Only the first time.)
-4. **Step 2:** click **Connect board** and pick your board.
-5. **Step 3:** click **Share my screen** and choose a window, tab or whole screen. Done!
+| | Thing | Notes |
+| :---: | :--- | :--- |
+| 🟨 | **The CYD board** (ESP32-035, 3.5" screen) | the yellow board with the screen |
+| 🔌 | **A USB cable that can carry data** | some cables only charge a phone: if the board doesn't show up, try another cable |
+| 💻 | **A computer with Google Chrome or Microsoft Edge** | Windows, Mac, Linux or a Chromebook. Safari and Firefox can't do this |
+| 📶 | *(optional)* **Home Wi-Fi** | only if you want to use it without the cable later |
 
-**No cable next time:** while connected with the cable, fill in **Set up Wi-Fi** (your home Wi-Fi name
-and password, 2.4 GHz). The board shows its name, like **cyd.local**. From then on, power the board
-from any USB charger, click **Connect over Wi-Fi** on the website and allow Chrome to *access devices
-on your local network* the first time. School Wi-Fi often blocks this; the cable always works.
+### Step by step
 
-**Try this:** share a single browser tab with a big picture or a video, then switch between
-*Smooth* and *Sharp* on the page and watch the difference on the board.
+Open **[novice130.github.io/ESP32-035-CYD-3.5-display/](https://novice130.github.io/ESP32-035-CYD-3.5-display/)** in Chrome or Edge.
+The page has three big numbered steps:
 
-## 🔧 How it works (for the curious)
+<img src="docs/website-steps.png" alt="The Screen Mirror website with three numbered steps: install, connect, share" width="520">
+
+1. **Plug the board into the computer** with the USB cable.
+2. **Step 1 – Install** *(only the first time)*: click **Install Screen Mirror**, choose your board
+   from the list (its name often has *USB*, *CH340* or *serial* in it), then click **Install**.
+   Wait about a minute and don't unplug it. When it's done, close the little installer window.
+   The board now says **Screen mirror**.
+3. **Step 2 – Connect**: click **Connect with cable** and choose your board again.
+4. **Step 3 – Share**: click **Share my screen**. Chrome asks *what* to share: pick a **tab**, a
+   **window** or your **entire screen**, then click **Share**.
+5. Look at the board: it shows the same picture! 🎉 Click **Stop** when you're done.
+
+> 🔤 The board's screen is small (480 × 320 dots), so a whole computer screen gets squeezed and
+> tiny writing is hard to read. Sharing **one window or one tab** makes it bigger and clearer.
+
+### No cable next time: use Wi-Fi
+
+You can set up Wi-Fi once, then power the board from any phone charger and send your screen
+through the air.
+
+<img src="docs/website-connected.png" alt="Step 2 connected with the cable, showing the Set up Wi-Fi box and the message Wi-Fi is ready" width="520">
+
+1. While the board is **connected with the cable**, a **Set up Wi-Fi** box appears.
+2. Type your **Wi-Fi name** and **password**, and give your board a **name** (like `cyd`, or
+   `cyd2` if your class has several boards). Click **Save Wi-Fi to the board**.
+   The name and password travel through the cable into the board only, not onto the internet.
+3. When it says **Wi-Fi is ready**, click **Disconnect** and plug the board into a charger.
+   The board's screen shows its name, for example **cyd.local**.
+4. On the website, type that name in **Over Wi-Fi** and click **Connect over Wi-Fi**. The first
+   time, Chrome asks to *access devices on your local network*: click **Allow**.
+5. Click **Share my screen**, just like before.
+
+> 📶 The board needs **2.4 GHz** Wi-Fi, and the computer must be on the **same** Wi-Fi. Many
+> school networks don't let devices talk to each other: if it can't find the board, use the cable.
+
+### 🔬 How does it work? (the simple version)
+
+- **It's a flip book.** A video is lots of still pictures shown quickly. The computer takes
+  a picture of the screen up to 30 times every second and sends each one to the board.
+- **It only sends what changed.** If you only move the mouse, the computer sends just the small
+  patch around the mouse, not the whole screen. A still screen sends nothing at all!
+- **Pictures are squeezed.** Each patch is saved as a **JPEG** (the same kind of file as phone
+  photos), which makes it about 20 times smaller, so it travels fast.
+- **The board has two brains.** The ESP32 chip has two **cores**: one catches the next picture
+  while the other draws the current one, so neither has to wait.
+- **Blurry when busy, sharp when calm.** When lots of things move (like a video), the computer
+  sends smaller, blurrier pictures so it stays smooth. When things stop, it sends a sharp one.
+
+This is what the board shows for the drawing on the computer screen in the picture above.
+It's 480 × 320 dots, exactly as the board gets it:
+
+<img src="docs/what-the-board-shows.png" alt="The drawing from the computer, shrunk to 480 by 320 dots as the board shows it" width="480">
+
+### 🧪 Things to try
+
+- Share a **tab with a video**, then switch between **Smooth**, **Sharp** and **Best of both** on
+  the page. What changes on the board? Which one is better for videos, and which one for reading?
+- Watch the number that says **"… pictures a second"** on the page. Is it higher when only a small
+  part of the screen moves, or when everything moves? Why do you think so?
+- Draw something in a painting app and share only that window: the board becomes a mini canvas.
+- Two boards? Give them different names (`cyd1`, `cyd2`) and connect each from a different computer.
+
+### 📖 Words to know
+
+| Word | What it means |
+| :--- | :--- |
+| **Pixel** | one tiny dot of colour on a screen. This board has 480 × 320 = 153,600 of them |
+| **Frame** | one still picture. Videos are many frames shown quickly |
+| **FPS** | *frames per second*: how many pictures arrive each second. 30 looks smooth |
+| **Firmware** | the program that lives inside the board. Step 1 puts it there |
+| **USB** | the cable that carries power and information between the computer and the board |
+| **Wi-Fi** | sending information through the air with radio waves |
+| **JPEG** | a way to make pictures much smaller by leaving out details your eyes barely notice |
+| **Core** | a "brain" inside a computer chip. The ESP32 has two |
+
+### 😕 Something not working?
+
+| What you see | Try this |
+| :--- | :--- |
+| The board isn't in the list | another USB cable (it must carry data) or another USB port. On Windows, a grown-up may need to install the [CH340 driver](https://www.wch-ic.com/downloads/CH341SER_EXE.html) |
+| "Board didn't answer" | do Step 1 (Install) first. Already did? Unplug the board, plug it back in, wait 3 seconds, connect again |
+| "The page is using the board" when installing | click **Disconnect** in Step 2 first |
+| Over Wi-Fi: "Can't reach the board" | is the board showing **Wi-Fi is ready**? Is the computer on the same Wi-Fi? Try the number shown under the name (like `192.168.0.42`) |
+| Over Wi-Fi it stops after a while | the charger or power bank may be too weak for Wi-Fi: try another one (1 A or more) |
+| The picture freezes when you switch windows | keep the website's window open (it can be behind other windows, just not minimised) |
+
+---
+
+# 🔧 For teachers and the curious
+
+The rest of this page explains how it's built: the firmware, the website, the protocol and the
+measurements. You don't need it to use Screen Mirror.
+
+Two ways to send a screen:
+
+- **🌐 The website** ([https://novice130.github.io/ESP32-035-CYD-3.5-display/](https://novice130.github.io/ESP32-035-CYD-3.5-display/), files in [`docs/`](../../docs/)): install, then share over the
+  USB cable or, after the one-time Wi-Fi setup, over Wi-Fi. Chrome or Edge, including Chromebooks.
+- **📶 A Mac script**: `tools/mirror.sh` sends the Mac's screen over Wi-Fi (no browser).
+
+## 🔧 How it works (technical)
 
 The computer does the hard part: it captures the screen, shrinks it to 480x320 and compresses
 only what changed. The board decodes and draws. Over USB the web page sends the frames through the
@@ -48,7 +140,7 @@ Mac: capture ─▶ fit into 480x320 ─▶ diff with last frame ─▶ JPEG of 
 Full-screen video plays at **~28 fps**, close to the panel's limit (see below), and the picture is
 full 480x320 whenever it isn't moving much.
 
-## 🌐 The website (USB)
+## 🌐 The website
 
 [`docs/index.html`](../../docs/index.html) and [`docs/mirror-worker.js`](../../docs/mirror-worker.js),
 published with GitHub Pages at https://novice130.github.io/ESP32-035-CYD-3.5-display/. It works in Chrome and Edge on Windows, macOS, Linux and
