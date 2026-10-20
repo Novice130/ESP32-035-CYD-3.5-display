@@ -20,6 +20,8 @@ include/config.h
 *.bin
 *.elf
 *.hex
+# ...except the firmware the web installer (docs/) serves
+!docs/firmware/**/*.bin
 
 # Video clips, source videos and previews for examples/video-clip (copyrighted content stays local)
 examples/video-clip/clips/

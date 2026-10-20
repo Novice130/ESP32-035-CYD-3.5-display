@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CYD Screen Mirror</title>
+<meta name="description" content="Show your computer screen on an ESP32 Cheap Yellow Display over a USB cable. Install the program and share your screen right from the browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+  :root {
+    --bg: #fffbea; --card: #ffffff; --ink: #1f2430; --muted: #5b6273; --line: #e8e1c8;
+    --yellow: #ffd23f; --blue: #2563eb; --blue-ink: #ffffff; --green: #15803d; --red: #b91c1c;
+    --shadow: 0 2px 0 #e8e1c8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181d; --card: #22242c; --ink: #f1f2f6; --muted: #a7adbd; --line: #343744;
+      --yellow: #f5c518; --blue: #60a5fa; --blue-ink: #0b1220; --green: #4ade80; --red: #f87171;
+      --shadow: 0 2px 0 #0d0e12;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181d; --card: #22242c; --ink: #f1f2f6; --muted: #a7adbd; --line: #343744;
+    --yellow: #f5c518; --blue: #60a5fa; --blue-ink: #0b1220; --green: #4ade80; --red: #f87171;
+    --shadow: 0 2px 0 #0d0e12;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 Nunito, system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 8px 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 18px 20px;
+          margin: 16px 0; box-shadow: var(--shadow); }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .num { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: #1f2430;
+         display: grid; place-items: center; font-weight: 800; font-size: 1.2rem; }
+  .step h2 { margin: 4px 0 6px; font-size: 1.25rem; }
+  .step p { margin: 6px 0; }
+  .small { font-size: 0.92rem; color: var(--muted); }
+  button, .btn { font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 12px 20px; cursor: pointer;
+                 background: var(--blue); color: var(--blue-ink); margin: 8px 8px 4px 0; }
+  button.secondary { background: transparent; color: var(--ink); border: 2px solid var(--line); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; margin-top: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+  .ok .dot { background: var(--green); } .ok { color: var(--green); }
+  .bad .dot { background: var(--red); } .bad { color: var(--red); }
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+  .choices label { border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+  .choices input { margin-right: 6px; }
+  .warn { border-color: var(--red); }
+  .warn strong { color: var(--red); }
+  video { width: 100%; max-width: 240px; border-radius: 8px; background: #000; display: none; margin-top: 10px; }
+  details { margin: 8px 0; }
+  summary { cursor: pointer; font-weight: 700; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 0.95rem; }
+  a { color: var(--blue); }
+  esp-web-install-button button { margin: 8px 0 4px; }
+  .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+  @media (max-width: 620px) { .ways { grid-template-columns: 1fr; } }
+  .way { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .way h3 { margin: 0 0 4px; font-size: 1.05rem; }
+  .way p { margin: 4px 0; }
+  input[type=text], input[type=password] { font: inherit; width: 100%; padding: 8px 10px; margin: 4px 0 8px;
+    border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+  label.field { display: block; font-weight: 700; font-size: 0.95rem; }
+  .sub { border-top: 2px dashed var(--line); margin-top: 14px; padding-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>📺 Show your screen on the CYD</h1>
+  <p class="lead">Show any window, tab or your whole screen on the ESP32 Cheap Yellow Display (3.5", 480×320).
+    Follow the three steps. Everything happens in this web page, there's nothing to download.</p>
+
+  <div class="card warn" id="unsupported" hidden>
+    <strong>This browser can't do this.</strong> Please open this page in <b>Google Chrome</b> or
+    <b>Microsoft Edge</b> on a computer (Windows, Mac, Linux or a Chromebook).
+  </div>
+
+  <section class="card step">
+    <div class="num">1</div>
+    <div>
+      <h2>Put the program on the board <span class="small">(only the first time)</span></h2>
+      <p>Plug the board into the computer with a USB cable. Click the button, pick your board from the list, then
+        click <b>Install</b>. It takes about a minute. Don't unplug the cable while it works.</p>
+      <p id="installBusy" class="status bad" hidden><span class="dot"></span><span>The page is using the board.
+        Click <b>Disconnect</b> in step 2 first, then install.</span></p>
+      <esp-web-install-button id="installer" manifest="firmware/screen-mirror/manifest.json">
+        <button slot="activate">Install Screen Mirror</button>
+        <span slot="unsupported"></span>
+        <span slot="not-allowed"></span>
+      </esp-web-install-button>
+      <p class="small">When it's done, close the installer window. The board shows <b>"Screen mirror"</b>.</p>
+    </div>
+  </section>
+
+  <section class="card step">
+    <div class="num">2</div>
+    <div style="flex:1">
+      <h2>Connect to the board</h2>
+      <div class="ways" id="ways">
+        <div class="way">
+          <h3>🔌 With the USB cable</h3>
+          <p class="small">Always works. Pick your board from the list (it often has <i>USB</i>, <i>CH340</i> or
+            <i>serial</i> in its name).</p>
+          <button id="connectUsb">Connect with cable</button>
+        </div>
+        <div class="way">
+          <h3>📶 Over Wi-Fi</h3>
+          <p class="small">No cable needed, after you set up Wi-Fi once (connect with the cable first). Type the name
+            shown on the board.</p>
+          <input type="text" id="address" value="cyd.local" aria-label="Board name or address" spellcheck="false">
+          <button id="connectWifi">Connect over Wi-Fi</button>
+        </div>
+      </div>
+      <button id="disconnect" class="secondary" hidden>Disconnect</button>
+      <div><span class="status" id="boardStatus"><span class="dot"></span><span>Not connected</span></span></div>
+
+      <div class="sub" id="wifiSetup" hidden>
+        <h3 style="margin:0 0 4px">📶 Set up Wi-Fi <span class="small">(optional, then you won't need the cable)</span></h3>
+        <p class="small">Use your home Wi-Fi (2.4 GHz). The name and password go through the cable into the board only.
+          Many school networks block this, so the cable is the way to go there.</p>
+        <label class="field" for="ssid">Wi-Fi name</label>
+        <input type="text" id="ssid" autocomplete="off" spellcheck="false">
+        <label class="field" for="pass">Wi-Fi password</label>
+        <input type="password" id="pass" autocomplete="off">
+        <label class="small"><input type="checkbox" id="showPass"> show password</label>
+        <label class="field" for="boardName" style="margin-top:8px">Board name <span class="small">(letters and numbers,
+          e.g. cyd2 if your class has several boards)</span></label>
+        <input type="text" id="boardName" value="cyd" spellcheck="false">
+        <button id="saveWifi">Save Wi-Fi to the board</button>
+        <div><span class="status" id="wifiStatus"><span class="dot"></span><span></span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card step">
+    <div class="num">3</div>
+    <div>
+      <h2>Share my screen</h2>
+      <p>Choose what to show: a whole screen, one window, or one browser tab. A single window or tab is easier to
+        read on the small display.</p>
+      <button id="share" disabled>Share my screen</button>
+      <button id="stop" class="secondary" hidden>Stop</button>
+      <div class="choices" role="radiogroup" aria-label="Picture">
+        <label><input type="radio" name="mode" value="auto" checked>Best of both <span class="small">(sharp when still, smooth when moving)</span></label>
+        <label><input type="radio" name="mode" value="fast">Smooth</label>
+        <label><input type="radio" name="mode" value="sharp">Sharp</label>
+      </div>
+      <div><span class="status" id="shareStatus"><span class="dot"></span><span>Not sharing</span></span></div>
+      <video id="preview" muted playsinline></video>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0">Something not working?</h2>
+    <details><summary>My board isn't in the list</summary>
+      <p>Try a different USB cable: some cables only charge and can't carry data. Try another USB port too.
+        On Windows, you may need the free <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html">CH340 driver</a>
+        (ask a grown-up to install it). Close other programs that might be using the board, such as the Arduino IDE or
+        PlatformIO.</p></details>
+    <details><summary>"Board didn't answer"</summary>
+      <p>The board needs the Screen Mirror program from step 1. If you installed it already, unplug the board, plug it
+        back in, wait 3 seconds and connect again.</p></details>
+    <details><summary>Wi-Fi: "Can't reach the board"</summary>
+      <p>Check that the board's screen says <b>Wi-Fi is ready</b> and shows a name like <b>cyd.local</b>, and that the
+        computer is on the same Wi-Fi. If Chrome asked to <b>access devices on your local network</b>, click
+        <b>Allow</b> (you can change it with the icon at the left of the address bar). If the name doesn't work, type
+        the number shown under it instead (like 192.168.0.177). Some networks, especially at school, don't let
+        devices talk to each other: use the cable there.</p></details>
+    <details><summary>Over Wi-Fi it stops after a while</summary>
+      <p>The board may be restarting because its power supply is too weak for Wi-Fi: try a different USB charger or
+        power bank (1 A or more), or a shorter cable. The page waits for it to come back by itself.</p></details>
+    <details><summary>The picture freezes when I switch windows</summary>
+      <p>Keep this browser window open (it can be behind other windows, just don't minimise or close it).</p></details>
+  </section>
+
+  <footer>
+    <p>💡 The screen-mirror idea came from <b>Abdul Samad Idowu</b>, a grade 6 student. Thank you, Abdul Samad!</p>
+    <p>Part of the <a href="https://github.com/Novice130/ESP32-035-CYD-3.5-display">ESP32-035 CYD projects</a>.
+      How it works and the source code: <a href="https://github.com/Novice130/ESP32-035-CYD-3.5-display/tree/main/examples/screen-mirror">examples/screen-mirror</a>.</p>
+  </footer>
+</main>
+
+<script type="module">
+const BAUD = 2000000;   // must match USB_BAUD in the firmware
+const USB_SERIAL_CHIPS = [{ usbVendorId: 0x1a86 }, { usbVendorId: 0x10c4 }, { usbVendorId: 0x0403 }, { usbVendorId: 0x303a }];
+const $ = (id) => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaStreamTrackProcessor) {
+  $("unsupported").hidden = false;
+  for (const id of ["connectUsb", "connectWifi", "share"]) $(id).disabled = true;
+} else if (!("serial" in navigator)) {
+  $("connectUsb").disabled = true;
+}
+
+// --- the link to the board: USB cable or Wi-Fi, same messages either way ----------------------
+// Every message is a 12-byte header (tag, scale, x, y, 0, length) + payload. The board answers
+// 'K' to each frame, and a "CYMs" status block to 'S' and 'W'.
+let link = null;            // { kind: "usb" | "wifi", board, send(bytes), close() }
+let worker = null, track = null, resyncing = false, lastStats = 0;
+const ackWaiters = [], statusWaiters = [];
+
+function header(tag, len = 0) {
+  const m = new Uint8Array(12 + len);
+  m[0] = tag.charCodeAt(0);
+  m[1] = 1;   // zoom 1: a frame field, harmless for the other messages
+  new DataView(m.buffer).setUint32(8, len, true);
+  return m;
+}
+
+function parseHello(b) {
+  const v = new DataView(b.buffer, b.byteOffset);
+  return { maxBytes: v.getUint32(8, true), maxScale: v.getUint8(12) };
+}
+
+function gotAck(n = 1) {
+  for (; n > 0 && ackWaiters.length; n--) ackWaiters.shift()();
+  if (n && worker) worker.postMessage({ type: "ack", n });
+}
+
+function gotStatus(st) { statusWaiters.splice(0).forEach((f) => f(st)); }
+
+// send a message and wait for its 'K'
+function waitFor(list, msg, ms) {
+  return new Promise((res, rej) => {
+    const f = (v) => { clearTimeout(t); res(v); };
+    const t = setTimeout(() => { list.splice(list.indexOf(f) >>> 0, 1); rej(new Error("no answer")); }, ms);
+    list.push(f);
+    link.send(msg);
+  });
+}
+const request = (msg, ms = 3000) => waitFor(ackWaiters, msg, ms);
+const askStatus = (msg) => waitFor(statusWaiters, msg, 3000);
+
+function setStatus(id, text, kind) {
+  const el = $(id);
+  el.className = "status " + (kind || "");
+  el.lastElementChild.textContent = text;
+}
+
+function mode() { return document.querySelector("input[name=mode]:checked").value; }
+
+// --- USB ----------------------------------------------------------------------------------------
+async function usbLink(port) {
+  await port.open({ baudRate: BAUD, bufferSize: 1 << 16 });
+  try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch {}   // let the board run
+  const writer = port.writable.getWriter(), reader = port.readable.getReader();
+  let chain = Promise.resolve(), closed = false, pend = new Uint8Array(0), helloWait = null;
+  const l = {
+    kind: "usb", board: null,
+    send(bytes) { chain = chain.then(() => writer.write(bytes)).catch(() => {}); return chain; },
+    async close() {
+      closed = true;
+      try { await reader.cancel(); } catch {}
+      try { reader.releaseLock(); } catch {}
+      try { await writer.close(); } catch {}
+      try { writer.releaseLock(); } catch {}
+      try { await port.close(); } catch {}
+    },
+    // ask for the hello until it answers (the board may have just restarted, or be finishing a broken frame)
+    async hello() {
+      l.board = null;
+      const answered = new Promise((r) => (helloWait = r));
+      for (let t = 0; t < 25 && !l.board; t++) {
+        await l.send(enc.encode("CYMH"));
+        await Promise.race([answered, new Promise((r) => setTimeout(r, 400))]);
+      }
+      if (!l.board) throw new Error("no hello");
+    },
+  };
+  (async () => {   // everything the board sends
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const buf = new Uint8Array(pend.length + value.length);
+        buf.set(pend); buf.set(value, pend.length);
+        let i = 0;
+        if (!l.board) {   // before the hello: start-up messages, then "CYM1"
+          const text = dec.decode(value).replace(/[^\x20-\x7e\n]/g, "").trim();
+          if (text) console.log("[board]", text);
+          for (; i + 13 <= buf.length; i++)
+            if (buf[i] === 67 && buf[i + 1] === 89 && buf[i + 2] === 77 && buf[i + 3] === 49) {
+              l.board = parseHello(buf.subarray(i, i + 13));
+              i += 13;
+              helloWait?.();
+              break;
+            }
+          if (!l.board) { pend = buf.slice(-12); continue; }
+        }
+        while (i < buf.length) {   // after the hello: 'K' acks and "CYMs" status blocks
+          if (buf[i] === 75) { gotAck(); i++; continue; }
+          if (buf[i] === 67) {
+            if (buf.length - i < 6) break;
+            if (buf[i + 1] === 89 && buf[i + 2] === 77 && buf[i + 3] === 115) {
+              const n = buf[i + 5];
+              if (buf.length - i < 7 + n || buf.length - i < 7 + n + buf[i + 6 + n]) break;
+              const m = buf[i + 6 + n];
+              gotStatus({ state: buf[i + 4], name: dec.decode(buf.subarray(i + 6, i + 6 + n)),
+                          ip: dec.decode(buf.subarray(i + 7 + n, i + 7 + n + m)) });
+              i += 7 + n + m;
+              continue;
+            }
+          }
+          i++;
+        }
+        pend = buf.slice(i);
+      }
+    } catch (e) { console.warn("serial read", e); }
+    if (!closed) lostBoard("The board was unplugged");
+  })();
+  await l.hello();
+  return l;
+}
+
+// --- Wi-Fi --------------------------------------------------------------------------------------
+// Plain HTTP requests to the board. Chrome allows them from this secure page after the visitor
+// allows "access to devices on your local network" (it asks the first time).
+async function wifiLink(address) {
+  const base = "http://" + address.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const opts = { targetAddressSpace: "local", cache: "no-store" };
+  const l = {
+    kind: "wifi", board: null,
+    send(bytes) {
+      fetch(base + "/frame", { ...opts, method: "POST", body: bytes })
+        .then((r) => r.arrayBuffer())
+        .then((b) => {
+          const u = new Uint8Array(b);
+          if (u.length === 1 && u[0] === 75) gotAck();
+        })
+        .catch(() => {});   // no ack: the stall check notices and reconnects
+    },
+    close() {},
+    async hello() {
+      const r = await fetch(base + "/hello", { ...opts, signal: AbortSignal.timeout(4000) });
+      const b = new Uint8Array(await r.arrayBuffer());
+      if (b.length < 13 || dec.decode(b.subarray(0, 4)) !== "CYM1") throw new Error("not a screen mirror");
+      l.board = parseHello(b);
+    },
+  };
+  await l.hello();
+  return l;
+}
+
+// --- connecting ---------------------------------------------------------------------------------
+let idlePing = null;
+
+function showConnected(on) {
+  $("ways").hidden = on;
+  $("disconnect").hidden = !on;
+  $("share").disabled = !on;
+  const usb = on && link?.kind === "usb";
+  $("installer").hidden = usb;   // the installer needs the USB port to itself
+  $("installBusy").hidden = !usb;
+  $("wifiSetup").hidden = !usb;
+  clearInterval(idlePing);
+  // over USB the board gives up after 10 s of silence, so keep it company while not sharing
+  if (usb) idlePing = setInterval(() => { if (!worker && link) link.send(header("J")); }, 2000);
+}
+
+async function connect(make, what) {
+  for (const id of ["connectUsb", "connectWifi"]) $(id).disabled = true;
+  setStatus("boardStatus", "Connecting…");
+  try {
+    link = await make();
+    setStatus("boardStatus", `Connected ${what}`, "ok");
+    showConnected(true);
+    if (link.kind === "usb") refreshWifiStatus();
+  } catch (e) {
+    console.warn(e);
+    link = null;
+    setStatus("boardStatus", e.message, "bad");
+  }
+  for (const id of ["connectUsb", "connectWifi"]) $(id).disabled = false;
+}
+
+$("connectUsb").onclick = async () => {
+  let port;
+  try { port = await navigator.serial.requestPort({ filters: USB_SERIAL_CHIPS }); } catch { return; }
+  connect(async () => {
+    try {
+      return await usbLink(port);
+    } catch (e) {
+      try { await port.close(); } catch {}
+      throw new Error(e.message === "no hello" ? "Board didn't answer. Did you do step 1?"
+        : /already open/i.test(e.message) ? "The installer is still using the board: close its window first"
+        : "Couldn't open the board (is another program using it?)");
+    }
+  }, "with the cable");
+};
+
+$("connectWifi").onclick = () => {
+  const address = $("address").value.trim() || "cyd.local";
+  try { localStorage.setItem("cydAddress", address); } catch {}
+  connect(async () => {
+    try {
+      return await wifiLink(address);
+    } catch (e) {
+      throw new Error(`Can't reach ${address}. Is the board on the same Wi-Fi? (see "Something not working?")`);
+    }
+  }, `over Wi-Fi (${address})`);
+};
+try { const a = localStorage.getItem("cydAddress"); if (a) $("address").value = a; } catch {}
+
+async function disconnect() {
+  await stopSharing();
+  const l = link;
+  link = null;
+  await l?.close();
+  showConnected(false);
+  setStatus("boardStatus", "Not connected");
+}
+$("disconnect").onclick = disconnect;
+
+function lostBoard(why) {
+  if (!link) return;
+  stopSharing();
+  const l = link;
+  link = null;
+  l.close();
+  showConnected(false);
+  setStatus("boardStatus", why, "bad");
+}
+
+// --- Wi-Fi setup (over the cable) ---------------------------------------------------------------
+function showWifi(st) {
+  if (st.state === 2) {
+    setStatus("wifiStatus", `Wi-Fi is ready! Next time, connect over Wi-Fi to: ${st.name}.local (or ${st.ip})`, "ok");
+    $("address").value = st.name + ".local";
+    try { localStorage.setItem("cydAddress", st.name + ".local"); } catch {}
+  } else if (st.state === 1) setStatus("wifiStatus", "The board is joining the Wi-Fi…");
+  else setStatus("wifiStatus", "Wi-Fi isn't set up on this board yet.");
+}
+
+async function refreshWifiStatus() {
+  try { showWifi(await askStatus(header("S"))); } catch {}
+}
+
+$("showPass").onchange = () => ($("pass").type = $("showPass").checked ? "text" : "password");
+
+$("saveWifi").onclick = async () => {
+  const fields = [$("ssid").value, $("pass").value, $("boardName").value.toLowerCase().replace(/[^a-z0-9-]/g, "") || "cyd"]
+    .map((f) => enc.encode(f));
+  if (!fields[0].length) return setStatus("wifiStatus", "Type the Wi-Fi name first.", "bad");
+  if (fields.some((f) => f.length > 64)) return setStatus("wifiStatus", "That's too long.", "bad");
+  const payload = new Uint8Array(fields.reduce((n, f) => n + 1 + f.length, 0));
+  let o = 0;
+  for (const f of fields) { payload[o++] = f.length; payload.set(f, o); o += f.length; }
+  const msg = header("W", payload.length);
+  msg.set(payload, 12);
+  $("saveWifi").disabled = true;
+  try {
+    let st = await askStatus(msg);
+    for (let t = 0; t < 30 && st.state !== 2; t++) {   // joining takes a few seconds
+      showWifi(st);
+      await new Promise((r) => setTimeout(r, 1000));
+      st = await askStatus(header("S"));
+    }
+    if (st.state === 2) showWifi(st);
+    else setStatus("wifiStatus", "The board couldn't join. Check the name and password (it needs 2.4 GHz Wi-Fi).", "bad");
+  } catch {
+    setStatus("wifiStatus", "The board didn't answer. Try again.", "bad");
+  }
+  $("saveWifi").disabled = false;
+};
+
+// --- sharing ------------------------------------------------------------------------------------
+async function share() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30, cursor: "always" }, audio: false });
+  } catch {
+    return;   // cancelled the picker
+  }
+  if (link.kind === "usb") {
+    // the board pauses its Wi-Fi radio while pictures come over the cable (it disturbs the cable)
+    try { await request(header("U")); } catch {}
+  }
+  track = stream.getVideoTracks()[0];
+  track.addEventListener("ended", stopSharing);   // the browser's own "Stop sharing" button
+  $("preview").srcObject = stream;
+  $("preview").style.display = "block";
+  $("preview").play().catch(() => {});
+
+  worker = new Worker("mirror-worker.js");
+  worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === "send") link?.send(m.data);
+    else if (m.type === "stats") {
+      lastStats = performance.now();
+      if (!resyncing) setStatus("shareStatus", `Sharing: ${m.fps.toFixed(0)} pictures a second`, "ok");
+    } else if (m.type === "stalled") resync();
+    else if (m.type === "ended") stopSharing();
+  };
+  const processor = new MediaStreamTrackProcessor({ track });
+  worker.postMessage({ type: "start", readable: processor.readable, mode: mode(),
+                       maxBytes: link.board.maxBytes, maxScale: link.board.maxScale }, [processor.readable]);
+  setStatus("shareStatus", "Sharing", "ok");
+  $("share").hidden = true;
+  $("stop").hidden = false;
+}
+
+// the board stopped acking (bytes lost, or Wi-Fi hiccup): say hello again and start over
+async function resync() {
+  if (resyncing || !worker || !link) return;
+  resyncing = true;
+  setStatus("shareStatus", "Picture got stuck, reconnecting…");
+  try {
+    if (link.kind === "wifi") {   // the board may be restarting (a weak power supply can do that): ~20 s
+      for (let t = 0; ; t++) {
+        try { await link.hello(); break; } catch (e) {
+          if (t >= 12 || !worker) throw e;
+          setStatus("shareStatus", "Picture got stuck, waiting for the board…");
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+    } else {
+      await link.hello();
+      await request(header("U")).catch(() => {});
+    }
+    worker?.postMessage({ type: "reset" });
+    setStatus("shareStatus", "Sharing", "ok");
+  } catch {
+    stopSharing();
+    setStatus("shareStatus", "The board stopped answering. Connect again.", "bad");
+  }
+  resyncing = false;
+}
+
+async function stopSharing() {
+  if (!worker) return;
+  worker.postMessage({ type: "stop" });
+  worker.terminate();
+  worker = null;
+  track?.stop();
+  track = null;
+  $("preview").srcObject = null;
+  $("preview").style.display = "none";
+  link?.send(header("Q"));   // the board goes back to its waiting screen
+  setStatus("shareStatus", "Not sharing");
+  $("share").hidden = false;
+  $("stop").hidden = true;
+}
+
+setInterval(() => {   // still screen: nothing is sent, so say so
+  if (worker && !resyncing && performance.now() - lastStats > 2500) setStatus("shareStatus", "Sharing (screen is still)", "ok");
+}, 1000);
+
+$("share").onclick = share;
+$("stop").onclick = stopSharing;
+for (const r of document.querySelectorAll("input[name=mode]"))
+  r.onchange = () => worker?.postMessage({ type: "mode", mode: mode() });
+</script>
+</body>
+</html>
