@@ -33,6 +33,24 @@ backup JUMP: the room level is tracked slowly and a fingertip over the sensor (a
 `LDR_COVER_RISE` above it) counts as one skip. The serial stats line prints `ldr N (room M)` so you
 can tune `LDR_COVER_RISE` / `SKIP_MS` in `src/main.cpp`.
 
+## 📡 Stream any length over Wi-Fi
+
+The flash holds ~50 s at good quality. For whole videos, keep the clip on another machine and let
+the CYD fetch it over Wi-Fi as it plays: the same `clip.bin`, made with `make_clip.py --budget 0x10000000`
+(no size limit), served by the tiny [`clip_server`](https://github.com/Novice130/Sipeed_Examples/tree/main/cyd-stream)
+(written for a Sipeed NanoKVM, but it's plain C++ for any Linux box).
+
+1. Copy `include/config.example.h` to `include/config.h` (git-ignored) and set `WIFI_SSID`,
+   `WIFI_PASSWORD` (2.4 GHz network) and `STREAM_HOST` (the server's IP). Build and flash.
+2. At boot the CYD joins Wi-Fi, asks the server for the file, and plays it with the same clock, taps
+   and light-sensor skip. Each frame is one request of a few KB; audio is fetched 4 KB (half a second)
+   at a time with 128 ms queued in DMA, so short Wi-Fi hiccups don't reach the speaker.
+3. No Wi-Fi or no server: it says so on serial and plays the flash clip. If it can't join, the serial
+   log lists every network in range (`[WiFi]   "my_network"  -61 dBm  ch 9`).
+
+Measured with a 4-minute clip at quality 70 (5.6 KB per frame): 15 fps, ~55 ms per frame including
+the network fetch. Wi-Fi adds ~500 KB to the firmware and uses ~120 KB of RAM.
+
 ## ✨ How it works
 
 - **Picture**: each frame is a baseline JPEG, shown at the biggest whole-number zoom that fits the

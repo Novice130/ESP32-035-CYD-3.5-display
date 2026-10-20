@@ -10,6 +10,10 @@
 // sent to the panel by DMA while the next blocks decode. Audio streams through I2S
 // into the built-in DAC from a task on core 0, locked to the same playback clock.
 // Controls: 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s ahead.
+//
+// Streaming: with Wi-Fi set in include/config.h, the clip is read over the network from
+// clip_server (Sipeed_Examples/cyd-stream) instead of flash, so it can be any length. Same file,
+// same byte ranges; if Wi-Fi or the server isn't there, the flash clip plays instead.
 // ==============================================================================
 
 #include <Arduino.h>
@@ -20,6 +24,23 @@
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
 #include <driver/i2s.h>
+#include <WiFi.h>
+
+#if __has_include("config.h")
+#include "config.h"   // WIFI_SSID / WIFI_PASSWORD / STREAM_HOST / STREAM_PORT (git-ignored)
+#endif
+#ifndef WIFI_SSID
+#define WIFI_SSID     ""   // empty = flash clip only
+#endif
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD ""
+#endif
+#ifndef STREAM_HOST
+#define STREAM_HOST   "192.168.0.222"
+#endif
+#ifndef STREAM_PORT
+#define STREAM_PORT   8765
+#endif
 
 // --- PIN DEFINITIONS FOR CYD 3.5" (ESP32-035) ---
 #define CYD_BACKLIGHT   27   // Backlight is GPIO 27 (Active HIGH)
@@ -48,7 +69,8 @@
 
 #define CLIP_SUBTYPE      0x40          // partitions.csv: clip, data, 0x40
 #define MAX_FRAME_BYTES   (96 * 1024)   // biggest JPEG we are willing to buffer
-#define AUDIO_DMA_BUFS    4
+#define MAX_FRAMES        16000         // frame index kept in RAM (64 KB): ~17 min at 15 fps
+#define AUDIO_DMA_BUFS    8             // 128 ms queued: rides out Wi-Fi hiccups
 #define AUDIO_DMA_FRAMES  512           // I2S frames per DMA buffer (= one write)
 #define AUDIO_MIN_I2S_HZ  30000         // 8 kHz clips run the DAC at 32 kHz (see startAudio)
 
@@ -79,7 +101,11 @@ static bool hasAudio = false;
 static char noClipReason[72];
 static uint32_t clipDurMs = 0;        // one pass of the clip
 static uint32_t maxFrameBytes = 0;
-static uint8_t* jpgBuf = nullptr;     // current JPEG, read from flash
+static uint8_t* jpgBuf = nullptr;     // current JPEG, read from flash or Wi-Fi
+static uint32_t* frameIdx = nullptr;  // frameCount + 1 offsets, loaded once
+static uint32_t clipSize = 0;         // bytes in the clip partition / served file
+static bool streaming = false;        // clip comes from clip_server over Wi-Fi
+static WiFiClient net[2];             // [0] video loop, [1] audio task: one request at a time each
 static uint16_t* strip[2];            // scaled pixel blocks, ping-pong for DMA
 static int stripSel = 0;
 static int vidScale = 2;              // whole-number zoom: 240x136 -> 2x, 160x90 -> 3x
@@ -127,6 +153,69 @@ static void skipAhead(uint32_t ms) {
 }
 
 // -----------------------------------------------------------------------------
+// CLIP SOURCE: the flash partition, or the same file from clip_server over Wi-Fi
+// -----------------------------------------------------------------------------
+// clip_server protocol (TCP, little endian): send u32 offset + u32 length, get u32 n + n bytes.
+// Length 0 asks for the file size (returned in n, no data). Reconnects once on any error.
+static bool netRequest(int ch, uint32_t off, uint32_t len, void* dst, uint32_t* nOut = nullptr) {
+    WiFiClient& c = net[ch];
+    for (int attempt = 0; attempt < 2; attempt++) {
+        if (!c.connected()) {
+            c.stop();
+            if (!c.connect(STREAM_HOST, STREAM_PORT, 2000)) continue;
+            c.setNoDelay(true);
+            c.setTimeout(2);   // seconds
+        }
+        uint32_t req[2] = {off, len}, n = 0;
+        if (c.write((const uint8_t*)req, sizeof(req)) == sizeof(req) && c.readBytes((uint8_t*)&n, 4) == 4 &&
+            (len == 0 || (n == len && c.readBytes((uint8_t*)dst, len) == len))) {
+            if (nOut) *nOut = n;
+            return true;
+        }
+        c.stop();
+    }
+    return false;
+}
+
+// ch: 0 = video loop, 1 = audio task (each has its own connection)
+static bool clipRead(uint32_t off, void* dst, uint32_t len, int ch) {
+    if (streaming) return netRequest(ch, off, len, dst);
+    return esp_partition_read(clipPart, off, dst, len) == ESP_OK;
+}
+
+// Join Wi-Fi and find clip_server. False = play the flash clip.
+static bool startStream() {
+    if (!WIFI_SSID[0]) return false;
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString("Joining Wi-Fi \"" WIFI_SSID "\" ...", 240, 160, 2);
+    WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);   // modem sleep adds 100+ ms to every request
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    for (uint32_t t0 = millis(); WiFi.status() != WL_CONNECTED && millis() - t0 < 15000;) delay(100);
+    bool ok = WiFi.status() == WL_CONNECTED;
+    if (!ok) {   // list what's in range: the ESP32 only sees 2.4 GHz networks
+        Serial.printf("[WiFi] can't join \"%s\". 2.4 GHz networks in range:\n", WIFI_SSID);
+        WiFi.disconnect();
+        int n = WiFi.scanNetworks();
+        for (int i = 0; i < n; i++)
+            Serial.printf("[WiFi]   \"%s\"  %d dBm  ch %d\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i));
+    } else {
+        Serial.printf("[WiFi] joined \"%s\" as %s\n", WIFI_SSID, WiFi.localIP().toString().c_str());
+        ok = netRequest(0, 0, 0, nullptr, &clipSize) && clipSize >= sizeof(ClipHeader);
+        if (ok) Serial.printf("[Stream] clip_server %s:%d serves %u bytes\n", STREAM_HOST, STREAM_PORT, (unsigned)clipSize);
+        else Serial.printf("[Stream] no clip_server at %s:%d\n", STREAM_HOST, STREAM_PORT);
+    }
+    if (!ok) {
+        Serial.println("[Stream] playing the flash clip instead");
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+    }
+    tft.fillScreen(TFT_BLACK);
+    return ok;
+}
+
+// -----------------------------------------------------------------------------
 // AUDIO: u8 PCM -> I2S -> built-in DAC on GPIO 26
 // -----------------------------------------------------------------------------
 static uint32_t audioUp = 1;               // I2S rate = audio rate * audioUp
@@ -136,13 +225,34 @@ static volatile uint32_t i2sFrames = 0;    // frames handed to I2S (rate readout
 // same sample so the left/right order quirk of DAC mode doesn't matter.
 static inline uint32_t dacFrame(int v) { return ((uint32_t)v << 24) | ((uint32_t)v << 8); }
 
+// Audio goes through a 4 KB cache: one read (or network request) per half second of sound
+static uint8_t audioCache[4096];
+static uint32_t cacheStart = 0, cacheLen = 0;
+
+static void readAudio(uint32_t pos, uint8_t* dst, uint32_t n) {
+    while (n) {
+        if (pos < cacheStart || pos >= cacheStart + cacheLen) {
+            cacheStart = pos;
+            cacheLen = min<uint32_t>(sizeof(audioCache), hdr.audioBytes - pos);
+            if (!clipRead(hdr.audioOffset + pos, audioCache, cacheLen, 1)) {
+                cacheLen = 0;
+                memset(dst, 128, n);   // network hiccup: a moment of silence
+                return;
+            }
+        }
+        uint32_t k = min(n, cacheStart + cacheLen - pos);
+        memcpy(dst, audioCache + (pos - cacheStart), k);
+        dst += k; pos += k; n -= k;
+    }
+}
+
 // n samples starting at pos; past the end of the audio data is silence
 static void readPcm(uint32_t pos, uint32_t total, uint8_t* dst, uint32_t n) {
     while (n) {
         if (pos >= total) pos = 0;
         uint32_t run = min(n, total - pos);
         uint32_t real = pos < hdr.audioBytes ? min(run, hdr.audioBytes - pos) : 0;
-        if (real) esp_partition_read(clipPart, hdr.audioOffset + pos, dst, real);
+        if (real) readAudio(pos, dst, real);
         memset(dst + real, 128, run - real);
         dst += run; pos += run; n -= run;
     }
@@ -235,37 +345,40 @@ static bool fail(const char* fmt, ...) {
 }
 
 static bool loadClip() {
-    clipPart = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, (esp_partition_subtype_t)CLIP_SUBTYPE, "clip");
-    if (!clipPart) return fail("No 'clip' partition: flash with pio env video_clip");
-    const uint32_t size = clipPart->size;
+    if (!streaming) {
+        clipPart = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, (esp_partition_subtype_t)CLIP_SUBTYPE, "clip");
+        if (!clipPart) return fail("No 'clip' partition: flash with pio env video_clip");
+        clipSize = clipPart->size;
+    }
+    const uint32_t size = clipSize;
+    const char* where = streaming ? "clip_server" : "Clip area";
 
-    if (esp_partition_read(clipPart, 0, &hdr, sizeof(hdr)) != ESP_OK) return fail("Flash read error");
-    if (memcmp(hdr.magic, "CLIP", 4) != 0) return fail("Clip area is empty (no CLIP header)");
+    if (!clipRead(0, &hdr, sizeof(hdr), 0)) return fail("%s read error", where);
+    if (memcmp(hdr.magic, "CLIP", 4) != 0) return fail("%s is empty (no CLIP header)", where);
     if (hdr.version != 1) return fail("Unsupported clip version %u", hdr.version);
     if (!hdr.width || !hdr.height || hdr.width > 240 || hdr.height > 160)
         return fail("Bad frame size %ux%u (max 240x160)", hdr.width, hdr.height);
     if (hdr.fpsX100 < 100 || hdr.fpsX100 > 6000) return fail("Bad frame rate (%u / 100 fps)", hdr.fpsX100);
     uint64_t idxEnd = (uint64_t)hdr.indexOffset + ((uint64_t)hdr.frameCount + 1) * 4;
     if (!hdr.frameCount || hdr.indexOffset < sizeof(hdr) || idxEnd > size) return fail("Bad frame index");
+    if (hdr.frameCount > MAX_FRAMES) return fail("Too many frames (%u, max %u)", (unsigned)hdr.frameCount, MAX_FRAMES);
 
-    // offsets must rise, stay inside the partition and each frame must fit in RAM
-    uint32_t chunk[64], prev = 0;
+    // the whole index stays in RAM: offsets must rise, stay inside the clip and each frame must fit
+    const uint32_t idxBytes = (hdr.frameCount + 1) * 4;
+    frameIdx = (uint32_t*)malloc(idxBytes);
+    if (!frameIdx) return fail("No RAM for the frame index");
+    for (uint32_t got = 0; got < idxBytes; got += 16384)   // small enough for one network reply
+        if (!clipRead(hdr.indexOffset + got, (uint8_t*)frameIdx + got, min<uint32_t>(16384, idxBytes - got), 0))
+            return fail("%s read error", where);
+    uint32_t prev = frameIdx[0];
+    if (prev < sizeof(hdr)) return fail("Bad frame index (entry 0)");
     maxFrameBytes = 0;
-    for (uint32_t i = 0; i <= hdr.frameCount; i += 64) {
-        uint32_t n = min<uint32_t>(64, hdr.frameCount + 1 - i);
-        if (esp_partition_read(clipPart, hdr.indexOffset + i * 4, chunk, n * 4) != ESP_OK) return fail("Flash read error");
-        for (uint32_t j = 0; j < n; j++) {
-            uint32_t off = chunk[j];
-            if (i + j == 0) {
-                if (off < sizeof(hdr)) return fail("Bad frame index (entry 0)");
-            } else {
-                if (off <= prev) return fail("Bad frame index (entry %u)", (unsigned)(i + j));
-                maxFrameBytes = max(maxFrameBytes, off - prev);
-            }
-            prev = off;
-        }
+    for (uint32_t i = 1; i <= hdr.frameCount; i++) {
+        if (frameIdx[i] <= prev) return fail("Bad frame index (entry %u)", (unsigned)i);
+        maxFrameBytes = max(maxFrameBytes, frameIdx[i] - prev);
+        prev = frameIdx[i];
     }
-    if (prev > size) return fail("Frame data runs past the clip partition");
+    if (prev > size) return fail("Frame data runs past the end of the clip");
     if (maxFrameBytes > MAX_FRAME_BYTES) return fail("Frame too big (%u bytes)", (unsigned)maxFrameBytes);
     jpgBuf = (uint8_t*)malloc((maxFrameBytes + 3) & ~3u);
     if (!jpgBuf) return fail("No RAM for a %u byte frame", (unsigned)maxFrameBytes);
@@ -330,10 +443,8 @@ static int drawBlocks(JPEGDRAW* d) {
 }
 
 static bool showFrame(uint32_t i) {
-    uint32_t off[2];
-    if (esp_partition_read(clipPart, hdr.indexOffset + i * 4, off, sizeof(off)) != ESP_OK) return false;
-    uint32_t len = off[1] - off[0];   // checked against maxFrameBytes at boot
-    if (esp_partition_read(clipPart, off[0], jpgBuf, len) != ESP_OK) return false;
+    uint32_t len = frameIdx[i + 1] - frameIdx[i];   // checked against maxFrameBytes at boot
+    if (!clipRead(frameIdx[i], jpgBuf, len, 0)) return false;
     if (!jpeg.openRAM(jpgBuf, len, drawBlocks)) return false;
     jpeg.setPixelType(RGB565_BIG_ENDIAN);   // panel byte order, so DMA sends it as-is
     tft.startWrite();
@@ -485,6 +596,7 @@ void setup() {
     tft.initDMA();
 
     // 6. Clip, then the scaled strip buffers (2 x S*S*4 KB, DMA capable: 16 KB at 2x, 36 KB at 3x)
+    streaming = startStream();
     clipOk = loadClip();
     for (int k = 0; clipOk && k < 2; k++) {
         strip[k] = (uint16_t*)heap_caps_malloc(MAX_BUFFERED_PIXELS * vidScale * vidScale * 2, MALLOC_CAP_DMA);
@@ -495,8 +607,8 @@ void setup() {
         Serial.println("[ESP32-035] Run examples/video-clip/tools/flash_clip.sh CLIP.bin");
         showNoClip();
     } else {
-        Serial.printf("[Clip] %ux%u x%d @ %u.%02u fps, %u frames (%.1f s), biggest frame %u bytes\n",
-                      hdr.width, hdr.height, vidScale, hdr.fpsX100 / 100, hdr.fpsX100 % 100, (unsigned)hdr.frameCount,
+        Serial.printf("[Clip] %s: %ux%u x%d @ %u.%02u fps, %u frames (%.1f s), biggest frame %u bytes\n",
+                      streaming ? "Wi-Fi" : "flash", hdr.width, hdr.height, vidScale, hdr.fpsX100 / 100, hdr.fpsX100 % 100, (unsigned)hdr.frameCount,
                       clipDurMs / 1000.0f, (unsigned)maxFrameBytes);
         clockBase = millis();   // playback starts now (audio task not running yet)
         if (hasAudio && !startAudio()) { hasAudio = false; Serial.println("[Clip] I2S DAC init failed"); }
