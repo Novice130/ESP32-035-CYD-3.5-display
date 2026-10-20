@@ -20,3 +20,6 @@ include/config.h
 *.bin
 *.elf
 *.hex
+
+# Video clips, source videos and previews for examples/video-clip (copyrighted content stays local)
+examples/video-clip/clips/

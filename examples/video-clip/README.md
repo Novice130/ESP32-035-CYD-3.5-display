@@ -56,13 +56,18 @@ This also writes the partition table below. With no clip in flash yet, the scree
 
 ### 2. Make a clip on your computer
 
-`tools/make_clip.py` needs Python 3 with PyAV, numpy and Pillow (`pip install av numpy pillow`,
-ideally in a venv). Run it from `examples/video-clip/`:
+`tools/make_clip.py` needs Python 3.10+ with PyAV, numpy and Pillow. Give the example its own venv
+(the repo's top-level `.venv` is the PlatformIO one) and keep your videos and clips in `clips/`.
+Both are git-ignored, so nothing copyrighted ends up in a commit. Run it from `examples/video-clip/`:
 
 ```bash
-python3 tools/make_clip.py my_video.mp4 --start 12 --dur 30 -o clip.bin --preview preview.png
-python3 tools/make_clip.py --test-pattern --dur 10 -o test.bin      # synthetic clip, no video needed
+python3 -m venv .venv && .venv/bin/pip install av numpy pillow      # once
+.venv/bin/python tools/make_clip.py clips/my_video.mp4 --start 12 --dur 30 -o clips/clip.bin --preview clips/preview.png
+.venv/bin/python tools/make_clip.py --test-pattern --dur 10 -o clips/test.bin   # synthetic clip, no video needed
 ```
+
+YouTube gives video and audio as separate files at most sizes; format 18 (360p) has both in one
+file, which is plenty for 240x136: `yt-dlp -f 18 -P clips URL`. Otherwise pass the audio with `--audio`.
 
 | Option | Default | Meaning |
 | :--- | :---: | :--- |
@@ -79,14 +84,14 @@ python3 tools/make_clip.py --test-pattern --dur 10 -o test.bin      # synthetic 
 `tools/check_clip.py clip.bin` checks a finished file (header, index, every JPEG, audio, size).
 
 How long a clip fits? The partition holds 3,080,192 bytes. At 15 fps with 8 kHz sound, a 51 s
-clip of real footage fits at quality ~55 (about 3.4 KB per frame); shorter clips get higher
-quality automatically.
+clip of game footage fits at quality ~55 (about 3.4 KB per frame); anime with lots of effects
+needs ~30 for 52 s and still looks clean at 2x. Shorter clips get higher quality automatically.
 
 ### 3. Flash the clip
 
 ```bash
-tools/flash_clip.sh clip.bin                        # default port /dev/cu.usbserial-11120
-tools/flash_clip.sh clip.bin /dev/cu.usbserial-XXXX
+tools/flash_clip.sh clips/clip.bin                  # default port /dev/cu.usbserial-11120
+tools/flash_clip.sh clips/clip.bin /dev/cu.usbserial-XXXX
 ```
 
 It checks the size and the `CLIP` header, then writes the file at `0x110000` with the repo's
