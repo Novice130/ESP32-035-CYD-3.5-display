@@ -6,7 +6,7 @@
 #   check_clip.py clip.bin [--budget 0x2F0000] [--render N OUT.png]
 #
 # --render N OUT.png: decode frame N and draw it the way the board shows it: 480x320 screen,
-# black bars, frame scaled 2x (nearest) and centred (240x136 -> 480x272 at y=24).
+# black bars, frame scaled by the biggest whole-number zoom (nearest) and centred (240x136 -> 2x, 160x90 -> 3x).
 # Exit status 1 if anything is wrong. Deps: Pillow (only for --render).
 import argparse
 import io
@@ -109,7 +109,7 @@ def check(path, budget=0x2F0000, quiet=False):
         errs.append("header padding (bytes 32..63) not zero")
     W, H, N = h["width"], h["height"], h["frame_count"]
     if not (0 < W <= SCREEN_W // 2 and 0 < H <= SCREEN_H // 2):
-        errs.append("size %dx%d does not fit 2x on %dx%d" % (W, H, SCREEN_W, SCREEN_H))
+        errs.append("size %dx%d does not fit at least 2x on %dx%d" % (W, H, SCREEN_W, SCREEN_H))
     if h["fps_x100"] == 0 or N == 0:
         errs.append("fps_x100=%d frame_count=%d" % (h["fps_x100"], N))
     if len(data) > budget:
@@ -207,7 +207,8 @@ def render(h, idx, data, n, out_png):
     if not 0 <= n < h["frame_count"]:
         raise SystemExit("frame %d out of range 0..%d" % (n, h["frame_count"] - 1))
     img = Image.open(io.BytesIO(data[idx[n]:idx[n + 1]])).convert("RGB")
-    big = img.resize((img.width * 2, img.height * 2), Image.NEAREST)
+    z = min(SCREEN_W // img.width, SCREEN_H // img.height)
+    big = img.resize((img.width * z, img.height * z), Image.NEAREST)
     screen = Image.new("RGB", (SCREEN_W, SCREEN_H), (0, 0, 0))
     screen.paste(big, ((SCREEN_W - big.width) // 2, (SCREEN_H - big.height) // 2))
     screen.save(out_png)

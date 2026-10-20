@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Converts a video into clip.bin for the video-clip player: baseline JPEG frames (240x136, YCbCr 4:2:0,
-# shown 2x on the 480x320 screen) + unsigned 8-bit mono PCM, packed to fit the 0x2F0000-byte "clip"
+# shown at the biggest whole-number zoom on the 480x320 screen: 2x, or 3x for 160x90) + unsigned 8-bit mono PCM, packed to fit the 0x2F0000-byte "clip"
 # flash partition. Flash it with tools/flash_clip.sh; check it with tools/check_clip.py.
 #
 #   make_clip.py VIDEO [--audio AUDIO_FILE] [--start SEC] [--dur SEC] [--fps 15]
@@ -11,7 +11,7 @@
 # --audio         separate audio file (e.g. YouTube's video-only .mp4 + audio-only .m4a); default is
 #                 VIDEO's own audio track.
 # --quality auto  binary-searches one JPEG quality for every frame so the whole file fits --budget.
-# --preview       contact sheet of 12 frames decoded back from the JPEGs actually written, at 2x.
+# --preview       contact sheet of 12 frames decoded back from the JPEGs actually written, zoomed like the board.
 # Picture: scaled to cover width x height and centre-cropped (16:9 -> 240x136 loses ~2 columns);
 # sources more than 10% off that aspect ratio are letterboxed instead. Frames are resampled to --fps
 # (nearest source frame). Audio: mixed to mono, resampled to --rate, trimmed/padded to exactly the
@@ -309,14 +309,15 @@ def write_preview(path, jpegs, fps, q, title):
     tiles = []
     for i in picks:
         im = Image.open(io.BytesIO(jpegs[i])).convert("RGB")
-        tiles.append((i, im.resize((im.width * 2, im.height * 2), Image.NEAREST)))
+        z = min(480 // im.width, 320 // im.height)   # same whole-number zoom as the firmware
+        tiles.append((i, im.resize((im.width * z, im.height * z), Image.NEAREST)))
     tw, th = tiles[0][1].size
     cols, lab, gap = 3, 18, 8
     rows = (len(tiles) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * tw + (cols + 1) * gap, 26 + rows * (th + lab + gap)), (32, 32, 32))
     d = ImageDraw.Draw(sheet)
     avg = sum(len(j) for j in jpegs) / len(jpegs) / 1024
-    d.text((gap, 6), "%s  |  %d frames @ %g fps, JPEG q%d, avg %.2f KB/frame  (2x, as on the board)"
+    d.text((gap, 6), "%s  |  %d frames @ %g fps, JPEG q%d, avg %.2f KB/frame  (zoomed as on the board)"
            % (title, len(jpegs), fps, q, avg), fill=(255, 255, 255), font=font(14))
     for n, (i, im) in enumerate(tiles):
         x = gap + (n % cols) * (tw + gap)
@@ -351,7 +352,7 @@ def main():
     if a.quality != "auto" and not (a.quality.isdigit() and 1 <= int(a.quality) <= MAX_Q):
         ap.error("--quality must be auto or 1-%d" % MAX_Q)
     if not (0 < a.width <= 240 and 0 < a.height <= 160):
-        ap.error("--width/--height must fit 2x on the 480x320 screen (max 240x160)")
+        ap.error("--width/--height must fit at least 2x on the 480x320 screen (max 240x160)")
 
     if a.test_pattern:
         dur = a.dur or 10.0

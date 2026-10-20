@@ -23,16 +23,23 @@ and a second script writes it into its own area of the board's 4 MB flash. No SD
 | :--- | :--- |
 | **1 tap** | Pause / resume (sound goes quiet while paused) |
 | **2 taps** | Mute / unmute |
+| **Cover the light sensor** | Skip 4 s ahead (each cover = one skip; wraps to the start at the end) |
 
-`PAUSED` and `MUTED` show in the black bar under the picture. A single tap is acted on once the
+`PAUSED`, `>> +4 s` and `MUTED` show in the black bar under the picture. A single tap is acted on once the
 300 ms double-tap window has passed.
+
+The light sensor (LDR, GPIO 34, on the front of the board) uses the same detector as the mario-arcade
+backup JUMP: the room level is tracked slowly and a fingertip over the sensor (a reading at least
+`LDR_COVER_RISE` above it) counts as one skip. The serial stats line prints `ldr N (room M)` so you
+can tune `LDR_COVER_RISE` / `SKIP_MS` in `src/main.cpp`.
 
 ## ✨ How it works
 
-- **Picture**: each frame is a 240×136 baseline JPEG, shown **2× (480×272)** in the middle of the
-  screen with black bars above and below. The firmware reads a frame from flash into RAM, decodes
-  it with [JPEGDEC](https://github.com/bitbank2/JPEGDEC) a few 16×16 blocks at a time, doubles the
-  pixels and sends them over 80 MHz SPI **by DMA while the next blocks decode**. A frame takes about
+- **Picture**: each frame is a baseline JPEG, shown at the biggest whole-number zoom that fits the
+  screen: 240×136 at **2× (480×272)**, or 160×90 at **3× (480×270)** for long clips, with black bars
+  above and below. The firmware reads a frame from flash into RAM, decodes
+  it with [JPEGDEC](https://github.com/bitbank2/JPEGDEC) a few 16×16 blocks at a time, repeats each
+  pixel 2 or 3 times and sends them over 80 MHz SPI **by DMA while the next blocks decode**. A frame takes about
   30 ms, so 15 fps leaves plenty of room.
 - **Timing**: the frame shown is picked from the time since playback started, so the clip runs at
   its real speed. If a frame is ever late, the player skips ahead instead of slowing down.
@@ -75,7 +82,7 @@ file, which is plenty for 240x136: `yt-dlp -f 18 -P clips URL`. Otherwise pass t
 | `--audio FILE` | the video's own sound | Take the sound from a separate file |
 | `--no-audio` | | Picture only |
 | `--fps N` | 15 | Frame rate |
-| `--width W --height H` | 240 × 136 | Decoded frame size (shown 2×, max 240 × 160) |
+| `--width W --height H` | 240 × 136 | Decoded frame size, max 240 × 160. Zoom is automatic: 2× for 240 × 136, 3× for 160 × 90 |
 | `--rate HZ` | 8000 | Audio sample rate |
 | `--quality auto\|1-95` | auto | JPEG quality; `auto` picks the best one that still fits the flash |
 | `--budget BYTES` | 0x2F0000 | Space available (the clip partition) |
@@ -86,6 +93,10 @@ file, which is plenty for 240x136: `yt-dlp -f 18 -P clips URL`. Otherwise pass t
 How long a clip fits? The partition holds 3,080,192 bytes. At 15 fps with 8 kHz sound, a 51 s
 clip of game footage fits at quality ~55 (about 3.4 KB per frame); anime with lots of effects
 needs ~30 for 52 s and still looks clean at 2x. Shorter clips get higher quality automatically.
+
+For longer clips, shrink the picture and let the firmware zoom it 3x. A 2.5-minute anime clip fits at
+quality ~21 with `--width 160 --height 90 --fps 9 --rate 6000` (soft, but every scene reads clearly).
+If a clip doesn't fit, `make_clip.py` tells you how many seconds would.
 
 ### 3. Flash the clip
 
@@ -133,10 +144,12 @@ unsigned 8-bit mono (128 = silence), the same length as the video.
 ## 🩺 Serial output
 
 ```
-[Clip] 240x136 @ 15.00 fps, 768 frames (51.2 s), biggest frame 6688 bytes
+[Clip] 240x136 x2 @ 15.00 fps, 768 frames (51.2 s), biggest frame 6688 bytes
 [Clip] audio 8000 Hz u8 (409600 bytes), DAC at 32000 Hz
 [ESP32-035] Heap free: 267692 bytes (largest block 110580)
-[ESP32-035] 15.0 fps (0 skipped, 30.0 ms/frame), audio 7987 Hz
+[ESP32-035] 15.0 fps (0 skipped, 30.0 ms/frame), audio 7987 Hz, ldr 0 (room 0)
+[LDR] covered 146 (room 18)
+[LDR] skip +4 s
 ```
 
 - `esp_core_dump_flash: No core dump partition found!` at boot is harmless: this layout gives
@@ -148,7 +161,7 @@ unsigned 8-bit mono (128 = silence), the same length as the video.
 
 ```
 video-clip/
-├── src/main.cpp          # player: flash reads, JPEG decode + 2x DMA push, DAC audio task, taps
+├── src/main.cpp          # player: flash reads, JPEG decode + 2x/3x DMA push, DAC audio task, taps, LDR skip
 ├── partitions.csv        # 1 MB app + 2.94 MB clip partition
 ├── tools/make_clip.py    # video -> clip.bin (or --test-pattern)
 ├── tools/check_clip.py   # validate a clip.bin, render a frame like the board does

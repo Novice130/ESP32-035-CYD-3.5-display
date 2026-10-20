@@ -6,9 +6,10 @@
 // tools/make_clip.py turns a video into clip.bin (240x136 baseline JPEG frames +
 // unsigned 8-bit mono PCM) and tools/flash_clip.sh writes it to the 'clip'
 // partition at 0x110000, separately from this firmware. Each frame is read from
-// flash into RAM, decoded with JPEGDEC a few 16x16 blocks at a time, scaled 2x and
+// flash into RAM, decoded with JPEGDEC a few 16x16 blocks at a time, scaled 2x or 3x and
 // sent to the panel by DMA while the next blocks decode. Audio streams through I2S
 // into the built-in DAC from a task on core 0, locked to the same playback clock.
+// Controls: 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s ahead.
 // ==============================================================================
 
 #include <Arduino.h>
@@ -26,6 +27,7 @@
 #define CYD_LED_GREEN   16
 #define CYD_LED_BLUE    17
 #define CYD_SPEAKER_PIN 26   // Audio amplifier = DAC2 = I2S "left" channel
+#define CYD_LDR_PIN     34   // Light sensor (ADC1): cover it to skip ahead
 
 // Touch Screen SPI (Shared HSPI bus: CLK=14, MISO=12, MOSI=13, CS=33)
 #define XPT2046_MOSI    13
@@ -35,6 +37,14 @@
 
 #define TAP_DEBOUNCE_MS   45   // release must last this long to count
 #define DOUBLE_TAP_MS     300  // window for the second tap
+
+// Light-sensor skip, same detector as mario-arcade: the reading is ~0 in a lit room and
+// rises in the dark. The room level is tracked slowly; rising LDR_COVER_RISE above it
+// counts as covered, and each cover jumps SKIP_MS ahead.
+#define LDR_DARK_IS_LOW   false // true if the ADC reading drops when the sensor is covered
+#define LDR_COVER_RISE    60    // measured on this board: room 0-30, fingertip over it 100-150
+#define LDR_RELEASE_MS    150   // the covered reading flickers to 0; released = low this long
+#define SKIP_MS           4000
 
 #define CLIP_SUBTYPE      0x40          // partitions.csv: clip, data, 0x40
 #define MAX_FRAME_BYTES   (96 * 1024)   // biggest JPEG we are willing to buffer
@@ -46,7 +56,7 @@
 struct __attribute__((packed)) ClipHeader {
     char     magic[4];       // "CLIP"
     uint16_t version;        // 1
-    uint16_t width, height;  // decoded JPEG size, shown 2x
+    uint16_t width, height;  // decoded JPEG size, shown at the biggest whole-number zoom
     uint16_t fpsX100;        // 1500 = 15 fps
     uint32_t frameCount;
     uint32_t indexOffset;    // frameCount + 1 offsets; frame i = [idx[i], idx[i+1])
@@ -70,11 +80,13 @@ static char noClipReason[72];
 static uint32_t clipDurMs = 0;        // one pass of the clip
 static uint32_t maxFrameBytes = 0;
 static uint8_t* jpgBuf = nullptr;     // current JPEG, read from flash
-static uint16_t* strip[2];            // 2x-scaled pixel blocks, ping-pong for DMA
+static uint16_t* strip[2];            // scaled pixel blocks, ping-pong for DMA
 static int stripSel = 0;
-static int vidX0, vidY0;              // top-left of the 2x picture on the panel
+static int vidScale = 2;              // whole-number zoom: 240x136 -> 2x, 160x90 -> 3x
+static int vidX0, vidY0;              // top-left of the scaled picture on the panel
 
 static volatile bool paused = false, muted = false;
+static uint32_t skipShownAt = 0;      // millis() of the last skip while its label is up, 0 = none
 
 // -----------------------------------------------------------------------------
 // PLAYBACK CLOCK: milliseconds into the clip, shared by video (core 1) and audio
@@ -103,6 +115,14 @@ static void setPaused(bool p) {
     if (p && !paused) pausedAt = (millis() - clockBase) % clipDurMs;
     if (!p && paused) clockBase = millis() - pausedAt;
     paused = p;
+    portEXIT_CRITICAL(&clockMux);
+}
+
+// jump ahead (wraps past the end, works while paused); the audio task re-locks by itself
+static void skipAhead(uint32_t ms) {
+    portENTER_CRITICAL(&clockMux);
+    if (paused) pausedAt = (pausedAt + ms) % clipDurMs;
+    else clockBase -= ms;
     portEXIT_CRITICAL(&clockMux);
 }
 
@@ -251,8 +271,9 @@ static bool loadClip() {
     if (!jpgBuf) return fail("No RAM for a %u byte frame", (unsigned)maxFrameBytes);
 
     clipDurMs = (uint64_t)hdr.frameCount * 100000 / hdr.fpsX100;
-    vidX0 = (480 - hdr.width * 2) / 2;
-    vidY0 = (320 - hdr.height * 2) / 2;
+    vidScale = min(480 / hdr.width, 320 / hdr.height);   // biggest whole-number zoom that fits
+    vidX0 = (480 - hdr.width * vidScale) / 2;
+    vidY0 = (320 - hdr.height * vidScale) / 2;
 
     hasAudio = false;
     if (hdr.audioRate) {
@@ -282,7 +303,7 @@ static void showNoClip() {
 }
 
 // -----------------------------------------------------------------------------
-// VIDEO: decode one frame and push it 2x-scaled with DMA
+// VIDEO: decode one frame and push it scaled up with DMA
 // -----------------------------------------------------------------------------
 // JPEGDEC hands over up to MAX_BUFFERED_PIXELS at a time (eight 16x16 blocks for
 // 4:2:0). Each group is doubled into one strip buffer and queued for DMA;
@@ -294,15 +315,17 @@ static int drawBlocks(JPEGDRAW* d) {
     if (d->y + h > hdr.height) h = hdr.height - d->y;
     if (w <= 0 || h <= 0 || w * h > MAX_BUFFERED_PIXELS) return 1;
 
+    const int S = vidScale, ow = w * S;
     uint16_t* out = strip[stripSel];
     stripSel ^= 1;
     for (int y = 0; y < h; y++) {
         const uint16_t* src = d->pPixels + y * d->iWidth;
-        uint32_t* row = (uint32_t*)(out + y * w * 4);   // two output rows per source row
-        for (int x = 0; x < w; x++) row[x] = src[x] * 0x10001u;   // each pixel twice
-        memcpy(row + w, row, w * 4);
+        uint16_t* row = out + y * S * ow;                // S output rows per source row
+        for (int x = 0; x < w; x++)
+            for (int k = 0; k < S; k++) row[x * S + k] = src[x];   // each pixel S times
+        for (int k = 1; k < S; k++) memcpy(row + k * ow, row, ow * 2);
     }
-    tft.pushImageDMA(vidX0 + d->x * 2, vidY0 + d->y * 2, w * 2, h * 2, out);
+    tft.pushImageDMA(vidX0 + d->x * S, vidY0 + d->y * S, ow, h * S, out);
     return 1;
 }
 
@@ -321,14 +344,20 @@ static bool showFrame(uint32_t i) {
     return ok;
 }
 
-// PAUSED / MUTED labels in the bottom black bar (if there is one)
+// PAUSED / skip / MUTED labels in the bottom black bar (if there is one)
 static void drawStatus() {
-    const int barY = vidY0 + hdr.height * 2;
+    const int barY = vidY0 + hdr.height * vidScale;
     if (320 - barY < 18) return;
     tft.fillRect(0, barY, 480, 320 - barY, TFT_BLACK);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     const int y = barY + (320 - barY) / 2;
     if (paused) { tft.setTextDatum(ML_DATUM); tft.drawString("PAUSED", 8, y, 2); }
+    if (skipShownAt) {
+        char label[16];
+        snprintf(label, sizeof(label), ">> +%u s", SKIP_MS / 1000);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString(label, 240, y, 2);
+    }
     if (muted)  { tft.setTextDatum(MR_DATUM); tft.drawString("MUTED", 472, y, 2); }
 }
 
@@ -382,11 +411,49 @@ Tap takeTap() {
 }
 
 // -----------------------------------------------------------------------------
+// LIGHT SENSOR: a fingertip over the LDR = skip ahead
+// -----------------------------------------------------------------------------
+int ldrBase = -1;           // room darkness level (bigger = darker)
+int ldrLast = 0;            // latest reading, for the serial stats
+bool ldrCovered = false;
+unsigned long ldrCoveredAt = 0, ldrBaseAt = 0, ldrLastDark = 0;
+
+// true once per cover
+bool pollLdr() {
+    unsigned long now = millis();
+    int v = analogRead(CYD_LDR_PIN);
+    if (LDR_DARK_IS_LOW) v = 4095 - v;
+    ldrLast = v;
+    if (ldrBase < 0) ldrBase = v;
+    if (!ldrCovered) {
+        if (v - ldrBase >= LDR_COVER_RISE) {
+            ldrCovered = true;
+            ldrCoveredAt = ldrLastDark = now;
+            Serial.printf("[LDR] covered %d (room %d)\n", v, ldrBase);
+            return true;
+        }
+        if (now - ldrBaseAt >= 100) {  // follow the room light slowly (~1.5 s)
+            ldrBaseAt = now;
+            ldrBase += (v - ldrBase) / 16;
+        }
+    } else if (v - ldrBase >= LDR_COVER_RISE / 2) {
+        ldrLastDark = now;
+        if (now - ldrCoveredAt > 10000) {  // dark for 10 s: the room got darker, not a finger
+            ldrCovered = false;
+            ldrBase = v;
+        }
+    } else if (now - ldrLastDark >= LDR_RELEASE_MS) {
+        ldrCovered = false;
+    }
+    return false;
+}
+
+// -----------------------------------------------------------------------------
 // SETUP
 // -----------------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n[ESP32-035] Starting video clip player (JPEG frames @ 2x + DAC audio)...");
+    Serial.println("\n[ESP32-035] Starting video clip player (scaled JPEG frames + DAC audio)...");
 
     // 1. Backlight on GPIO 27 (Active HIGH)
     pinMode(CYD_BACKLIGHT, OUTPUT);
@@ -400,9 +467,10 @@ void setup() {
     digitalWrite(CYD_LED_GREEN, HIGH);
     digitalWrite(CYD_LED_BLUE,  HIGH);
 
-    // 3. Touch CS setup
+    // 3. Touch CS + light sensor
     pinMode(XPT2046_CS, OUTPUT);
     digitalWrite(XPT2046_CS, HIGH);
+    pinMode(CYD_LDR_PIN, INPUT);
 
     // 4. TFT Display Initialisation (Standard Working Landscape Rotation 1)
     tft.init();
@@ -416,18 +484,19 @@ void setup() {
     ts.setRotation(1);
     tft.initDMA();
 
-    // 6. Strip buffers (2 x 16 KB, DMA capable)
-    for (int k = 0; k < 2; k++) strip[k] = (uint16_t*)heap_caps_malloc(MAX_BUFFERED_PIXELS * 4 * 2, MALLOC_CAP_DMA);
-
-    // 7. Clip
-    clipOk = strip[0] && strip[1] ? loadClip() : fail("No RAM for strip buffers");
+    // 6. Clip, then the scaled strip buffers (2 x S*S*4 KB, DMA capable: 16 KB at 2x, 36 KB at 3x)
+    clipOk = loadClip();
+    for (int k = 0; clipOk && k < 2; k++) {
+        strip[k] = (uint16_t*)heap_caps_malloc(MAX_BUFFERED_PIXELS * vidScale * vidScale * 2, MALLOC_CAP_DMA);
+        if (!strip[k]) clipOk = fail("No RAM for %dx strip buffers", vidScale);
+    }
     if (!clipOk) {
         Serial.printf("[ESP32-035] No clip: %s\n", noClipReason);
         Serial.println("[ESP32-035] Run examples/video-clip/tools/flash_clip.sh CLIP.bin");
         showNoClip();
     } else {
-        Serial.printf("[Clip] %ux%u @ %u.%02u fps, %u frames (%.1f s), biggest frame %u bytes\n",
-                      hdr.width, hdr.height, hdr.fpsX100 / 100, hdr.fpsX100 % 100, (unsigned)hdr.frameCount,
+        Serial.printf("[Clip] %ux%u x%d @ %u.%02u fps, %u frames (%.1f s), biggest frame %u bytes\n",
+                      hdr.width, hdr.height, vidScale, hdr.fpsX100 / 100, hdr.fpsX100 % 100, (unsigned)hdr.frameCount,
                       clipDurMs / 1000.0f, (unsigned)maxFrameBytes);
         clockBase = millis();   // playback starts now (audio task not running yet)
         if (hasAudio && !startAudio()) { hasAudio = false; Serial.println("[Clip] I2S DAC init failed"); }
@@ -451,6 +520,7 @@ void loop() {
     static uint32_t frames = 0, skipped = 0, errors = 0, i2sT = 0;
     static uint64_t busyUs = 0;
     static uint32_t lastFrame = UINT32_MAX;
+    static bool skipped4s = false;   // the next frame jump is a skip, not a slow frame
 
     if (!clipOk) {
         delay(50);
@@ -472,11 +542,22 @@ void loop() {
         Serial.println(muted ? "[Touch] double tap: muted" : "[Touch] double tap: sound on");
         drawStatus();
     }
+    if (pollLdr()) {
+        skipAhead(SKIP_MS);
+        skipped4s = true;
+        skipShownAt = millis() | 1;
+        Serial.printf("[LDR] skip +%u s\n", SKIP_MS / 1000);
+        drawStatus();
+    } else if (skipShownAt && millis() - skipShownAt > 1000) {
+        skipShownAt = 0;
+        drawStatus();
+    }
 
-    uint32_t frame = paused ? lastFrame
-                            : min<uint32_t>((uint64_t)clipPosMs() * hdr.fpsX100 / 100000, hdr.frameCount - 1);
+    // while paused the clock stands still, so this only changes after a skip
+    uint32_t frame = min<uint32_t>((uint64_t)clipPosMs() * hdr.fpsX100 / 100000, hdr.frameCount - 1);
     if (frame != lastFrame) {
-        if (lastFrame != UINT32_MAX) skipped += (frame + hdr.frameCount - lastFrame - 1) % hdr.frameCount;
+        if (lastFrame != UINT32_MAX && !skipped4s) skipped += (frame + hdr.frameCount - lastFrame - 1) % hdr.frameCount;
+        skipped4s = false;
         uint32_t t0 = micros();
         if (!showFrame(frame) && errors++ < 5)
             Serial.printf("[ESP32-035] frame %u failed (JPEG error %d)\n", (unsigned)frame, jpeg.getLastError());
@@ -493,9 +574,9 @@ void loop() {
         char audio[32] = "";
         if (hasAudio) snprintf(audio, sizeof(audio), ", audio %.0f Hz",
                                (i2sNow - i2sT) * 1000.0f / (now - fpsT) / audioUp);
-        Serial.printf("[ESP32-035] %.1f fps (%u skipped, %.1f ms/frame)%s%s%s\n",
+        Serial.printf("[ESP32-035] %.1f fps (%u skipped, %.1f ms/frame)%s, ldr %d (room %d)%s%s\n",
                       frames * 1000.0f / (now - fpsT), (unsigned)skipped, frames ? busyUs / 1000.0f / frames : 0.0f,
-                      audio, paused ? ", paused" : "", muted ? ", muted" : "");
+                      audio, ldrLast, ldrBase, paused ? ", paused" : "", muted ? ", muted" : "");
         frames = skipped = 0;
         busyUs = 0;
         i2sT = i2sNow;
