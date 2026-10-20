@@ -5,6 +5,36 @@
 [![Touch](https://img.shields.io/badge/Touch-XPT2046%20Resistive-green.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
 
+## 🧒 Start here (for students)
+
+This board is a tiny computer (an **ESP32** chip) built onto the back of a 3.5-inch colour touch
+screen. It also has a small light that can glow in different colours (an **RGB LED**), a speaker, and
+a **light sensor** that notices when you cover it with your fingertip. You write a program on a
+computer, send it to the board through a USB cable, and then the board runs it all by itself.
+Each folder in [`examples/`](examples/) is one finished project you can put on the board.
+
+**You need:** this board, a USB-C cable that can carry data (some cables only charge), and a computer
+with **VS Code** and the **PlatformIO** extension (free apps for writing code and sending it to the
+board; your teacher can install them once).
+
+**To run a project:**
+1. Download this project (green **Code** button on GitHub, then **Download ZIP**, then unzip it) and
+   open the folder in VS Code. The first time, PlatformIO needs a few minutes to download its tools.
+2. Pick a project from the table and pictures further down. **Matrix Rain** and **Neo-Tokyo
+   Synthwave** are good first picks because they need no extra setup.
+3. Plug the board into the computer with the USB cable.
+4. In the PlatformIO sidebar (the ant-head icon), open **Project Tasks**, then the project's env
+   name (for example `env:matrix_rain`), then click **Upload**.
+5. Wait for `SUCCESS`. The board restarts and your project appears on the screen.
+
+**Stuck?** If the upload says it can't find the port (the name of the USB connection), the
+`upload_port` and `monitor_port` lines in `platformio.ini` name the owner's computer: ask your
+teacher to change them to your computer's port (like `COM3` on Windows) or delete them. Windows may
+also need the free **CH340** USB driver. Some of these boards have a cracked touch screen, so several
+projects also let you **cover the light sensor** instead of tapping.
+
+## 🔧 Board details (for the curious)
+
 > **⚠️ WARNING FOR MAKERS & AI CODING ASSISTANTS:**  
 > Even though this board is often marketed as a "Cheap Yellow Display" (CYD), **it is NOT the same as the classic 2.8" CYD (`ESP32-2432S028R`)**.  
 > If you upload standard 2.8" CYD code to this board, **the screen will stay completely black** because the backlight is wired to **GPIO 27** (instead of GPIO 21) and the touch controller shares the **HSPI bus** rather than using a separate SPI port.
@@ -75,6 +105,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
     ├── pokemon-kalos/             # Standalone POKéMON Kalos tribute (display + tap-to-play)
     ├── video-clip/                # Standalone video clip player (JPEG frames + DAC audio from flash)
     ├── cloud-game/                # Thin client: plays a game streamed from a server over Wi-Fi (Flappy tribute)
+    ├── screen-mirror/             # Live copy of a computer's screen: website + USB cable, or Wi-Fi from a Mac
     ├── manga-aura/                # Standalone Manga Ultra Instinct aura
     ├── neo-tokyo-synthwave/       # Standalone 3D Synthwave wireframe grid
     ├── rasengan-vortex/           # Standalone 3D Rasengan particle vortex
@@ -89,6 +120,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Video Clip Player** | `[env:video_clip]` | Plays a looping video clip with sound: JPEG frames zoomed 2x (240x136, 15 fps) or 3x (160x90, for ~2.5 min clips), 8-bit audio through the DAC on GPIO 26. Convert your own video with `tools/make_clip.py`, or stream a whole video over Wi-Fi from a server. 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s. | [`examples/video-clip/`](examples/video-clip/) |
 | **Cloud Game (Flappy tribute)** | `[env:cloud_game]` | The game runs on a Sipeed NanoKVM and streams 240x160 frames over Wi-Fi at 25-30 fps; this board draws them and sends back one button (cover the light sensor). | [`examples/cloud-game/`](examples/cloud-game/) |
+| **Screen Mirror** | `[env:screen_mirror]` | Shows a computer's screen, window or tab on the board. Easiest: the [Screen Mirror website](https://novice130.github.io/ESP32-035-CYD-3.5-display/) installs it and shares over a USB cable from Chrome/Edge. Or Wi-Fi from a Mac with `tools/mirror.sh`. Sends only what changed, full 480x320 when calm, half resolution while a lot moves; ~28 fps with full-screen video. Idea by Abdul Samad Idowu. | [`examples/screen-mirror/`](examples/screen-mirror/) |
 | **Manga Ultra Instinct** | `[env:manga_aura]` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ), and electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
 | **Neo-Tokyo 2088 Synthwave** | `[env:neo_tokyo_synthwave]` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
 | **Rasengan Ki Energy Vortex** | `[env:rasengan_vortex]` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
@@ -136,6 +168,11 @@ examples/video-clip/tools/flash_clip.sh clip.bin
 
 # Flash the Cloud Game thin client (needs examples/cloud-game/include/config.h and a game server):
 pio run -e cloud_game -t upload
+
+# Screen Mirror: easiest from the website https://novice130.github.io/ESP32-035-CYD-3.5-display/ (installs + shares over USB).
+# Or flash it yourself (add examples/screen-mirror/include/config.h for Wi-Fi), then on a Mac:
+pio run -e screen_mirror -t upload
+examples/screen-mirror/tools/mirror.sh
 
 # Flash the Manga Ultra Instinct animation:
 pio run -e manga_aura -t upload
@@ -207,3 +244,7 @@ build_flags =
 
 ## 📄 License
 This project is licensed under the MIT License — feel free to use it in your own dashboards, Home Assistant setups, or IoT projects!
+
+---
+
+🤖 Working with an AI assistant? Give it [AI_PROMPT.md](AI_PROMPT.md).

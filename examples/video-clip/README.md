@@ -15,6 +15,24 @@ and a second script writes it into its own area of the board's 4 MB flash. No SD
 > **Only convert videos you have the rights to use** (your own footage, public-domain or suitably
 > licensed clips). Keep source videos and `clip.bin` files out of this repository.
 
+## 🧒 Start here (for students)
+
+- **What you will see:** a short video with sound playing on the board, over and over. Tap once to
+  pause, tap twice to mute, or cover the light sensor with your fingertip to skip ahead 4 seconds.
+- **You need:** the board, a USB-C cable, and a Mac or Linux computer set up as in the
+  [main Start here](../../README.md#-start-here-for-students). Making a clip also needs Python (step 2),
+  so a teacher may want to help with that part.
+- **Steps:**
+  1. Upload the player: in PlatformIO, click **Project Tasks → env:video_clip → Upload**. The screen
+     will say **"No video clip in flash"**. That is normal: there is no video on the board yet.
+  2. Make a clip. The commands in "2. Make a clip on your computer" below turn a video into a file
+     called `clip.bin`, or make a colourful test video with `--test-pattern` if you have no video.
+  3. Send the clip to the board with `tools/flash_clip.sh` (see "3. Flash the clip" below). The board
+     restarts and plays it.
+- **Only use videos you are allowed to use**, like ones you filmed yourself.
+- **Try changing:** in `src/main.cpp`, `SKIP_MS` is how far the light-sensor skip jumps (`4000`
+  means 4 seconds). Try `10000` for 10-second skips.
+
 ---
 
 ## 🎮 Controls
@@ -186,3 +204,7 @@ video-clip/
 ├── tools/flash_clip.sh   # write clip.bin to 0x110000
 └── docs/screenshot.png
 ```
+
+---
+
+🤖 Working with an AI assistant? Give it [AI_PROMPT.md](../../AI_PROMPT.md).

@@ -14,6 +14,24 @@ the spot.
 > assets, no ROMs, no music from the games). Mario and related characters are trademarks of
 > Nintendo; this is a non-commercial fan project.
 
+## 🧒 Start here (for students)
+
+- **What you will see:** a little plumber running to the right through 32 levels, jumping over holes
+  and stomping enemies. At first the game plays itself. Press one of the three round buttons on the
+  right edge of the screen (**JUMP**, **FIRE**, **RUN**) and you take control.
+- **No working touch screen?** Cover the light sensor on the front of the board with your fingertip
+  to jump.
+- **You need:** the board, a USB-C cable and a computer set up as in the
+  [main Start here](../../README.md#-start-here-for-students).
+- **Steps:**
+  1. Open this whole project folder in VS Code.
+  2. Plug in the board with the USB cable.
+  3. In PlatformIO, click **Project Tasks → env:mario_arcade → Upload**.
+  4. When it says `SUCCESS`, watch the screen and press a button to play.
+- **Try changing:** in `include/game.h`, `JUMP_VEL` sets how hard the plumber jumps (it is `112`).
+  Try `140`, upload again, and see how high he goes. The self-playing demo may start making mistakes
+  because it was tuned for the normal jump.
+
 ---
 
 ## 🎮 How to play
@@ -139,3 +157,7 @@ mario-arcade/
 ├── tools/              # art + level scripts, desktop simulator
 └── docs/screenshot.png
 ```
+
+---
+
+🤖 Working with an AI assistant? Give it [AI_PROMPT.md](../../AI_PROMPT.md).

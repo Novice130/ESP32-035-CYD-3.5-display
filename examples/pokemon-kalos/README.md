@@ -15,6 +15,24 @@ Tap it and you're playing.
 > original music). Pokémon and its characters are trademarks of Nintendo / Game Freak / Creatures;
 > this is a non-commercial fan project.
 
+## 🧒 Start here (for students)
+
+- **What you will see:** a trainer walking along a route full of grass, trees and a pond, and
+  battles with creatures like Pikachu and Fennekin, drawn like an old handheld game. When nobody
+  touches it, it plays itself.
+- **How to play:** tap the screen once to walk or attack, tap twice quickly to search the grass or
+  throw a ball. This game needs a working touch screen; without one it keeps playing itself.
+- **You need:** the board, a USB-C cable and a computer set up as in the
+  [main Start here](../../README.md#-start-here-for-students).
+- **Steps:**
+  1. Open this whole project folder in VS Code.
+  2. Plug in the board with the USB cable.
+  3. In PlatformIO, click **Project Tasks → env:pokemon_kalos → Upload**.
+  4. When it says `SUCCESS`, watch the screen, then tap to play.
+- **Try changing:** in `include/game.h`, the `MOVES` list gives each attack a power number, for
+  example `{"THUNDERBOLT", T_ELECTRIC, 90, FX_BOLT}`. Change `90` to `200` (keep it under 256),
+  upload again, and see how much faster battles end.
+
 ---
 
 ## 🎮 How to play
@@ -101,3 +119,7 @@ pokemon-kalos/
 ├── tools/              # art scripts + desktop simulator
 └── docs/screens.png
 ```
+
+---
+
+🤖 Working with an AI assistant? Give it [AI_PROMPT.md](../../AI_PROMPT.md).

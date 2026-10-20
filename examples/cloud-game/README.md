@@ -7,6 +7,24 @@ setup) runs it and renders every frame; the CYD shows the frames over Wi-Fi and 
 button. The first game is a **Flappy Bird tribute**:
 [Sipeed_Examples/cyd-cloud-game](https://github.com/Novice130/Sipeed_Examples/tree/main/cyd-cloud-game).
 
+## 🧒 Start here (for students)
+
+- **What you will see:** a Flappy-Bird-style game. Cover the light sensor on the front of the board
+  with your fingertip (or tap the screen) to make the bird flap through the gaps between pipes.
+- **The trick:** the game itself runs on a different computer (the **server**). It sends each
+  picture to the board over **Wi-Fi** (wireless internet at home or school), and the board sends
+  back your button presses. So you need that server running first; see the link above. A teacher
+  may want to set this part up.
+- **You need:** the board, a USB-C cable, a computer set up as in the
+  [main Start here](../../README.md#-start-here-for-students), a 2.4 GHz Wi-Fi network, and the
+  game server running on another machine on the same network.
+- **Steps:**
+  1. Copy `include/config.example.h` to a new file `include/config.h`.
+  2. In `config.h`, type your Wi-Fi name, Wi-Fi password and the server's address (`GAME_HOST`).
+     This file is never uploaded to GitHub, so your password stays private.
+  3. Plug in the board and click **Project Tasks → env:cloud_game → Upload** in PlatformIO.
+  4. The screen shows it joining Wi-Fi and connecting, then the game appears.
+
 ## 🎮 Controls
 
 | Input | What it does |
@@ -65,3 +83,7 @@ server restarts.
 ```
 
 Flappy Bird is a trademark of its owner; the game is an unaffiliated tribute with original art.
+
+---
+
+🤖 Working with an AI assistant? Give it [AI_PROMPT.md](../../AI_PROMPT.md).
