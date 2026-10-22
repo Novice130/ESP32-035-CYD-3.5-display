@@ -11,10 +11,10 @@ boot_app0="$HOME/.platformio/packages/framework-arduinoespressif32/tools/partiti
 
 # website folder              PlatformIO env               name shown in the installer
 for row in \
-    "screen-mirror|screen_mirror_web|CYD Screen Mirror (3.5\")" \
-    "screen-mirror-28|screen_mirror_28_web|CYD Screen Mirror (2.8\", 1 USB)" \
-    "screen-mirror-28-2usb|screen_mirror_28_2usb_web|CYD Screen Mirror (2.8\", 2 USB)" \
-    "screen-mirror-24|screen_mirror_24_web|CYD Screen Mirror (2.4\")"; do
+    "screen-mirror|screen_mirror_web|CYD Screen Mirror (3.5-inch)" \
+    "screen-mirror-28|screen_mirror_28_web|CYD Screen Mirror (2.8-inch, 1 USB)" \
+    "screen-mirror-28-2usb|screen_mirror_28_2usb_web|CYD Screen Mirror (2.8-inch, 2 USB)" \
+    "screen-mirror-24|screen_mirror_24_web|CYD Screen Mirror (2.4-inch)"; do
     dir="${row%%|*}"; rest="${row#*|}"; env="${rest%%|*}"; name="${rest#*|}"
     echo "== $env -> docs/firmware/$dir"
     .venv/bin/pio run -e "$env" | tail -1
@@ -35,6 +35,8 @@ for row in \
 }
 EOF
 done
+
+for m in docs/firmware/*/manifest.json; do python3 -m json.tool "$m" >/dev/null || { echo "STOP: $m is not valid JSON" >&2; exit 1; }; done
 
 # a private config.h (Wi-Fi password) must never reach the public website
 cfg=examples/screen-mirror/include/config.h

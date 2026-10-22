@@ -76,6 +76,15 @@ Newest first. Add to it whenever something costs more than a few minutes.
 - A Direct Upload Pages project can't be switched to Git later; a new Git project was created via
   the API (`source.type = github` works when the Cloudflare GitHub app is already authorised) and
   the custom domain moved over.
+- **Checking a deploy:** Pages answers **200 with index.html for missing files**, so
+  `curl -w %{http_code}` on a new file proves nothing. Check content instead
+  (`curl -s .../manifest.json | python3 -m json.tool`, or grep the page for new text) and the
+  deployment list (`GET /accounts/<id>/pages/projects/learnnovice-robo/deployments` → commit hash).
+- The first push after connecting Git did **not** trigger a build; `POST .../deployments` builds
+  the latest `main`. If pushes still don't deploy, check GitHub → Settings → Applications →
+  Cloudflare Workers and Pages → repository access includes this repo.
+- Manifest names: a `"` inside (like `2.8"`) breaks the JSON and the installer silently fails.
+  `build-web-firmware.sh` now names boards `2.8-inch` and validates every manifest.
 - `docs/` is public: never put secrets there. The web firmware is built with `MIRROR_NO_CONFIG`
   so `include/config.h` (Wi-Fi password) can't get into `docs/firmware/*.bin` — check with
   `grep -c -a "<password>" docs/firmware/*/*.bin` (must print 0) before every push.
