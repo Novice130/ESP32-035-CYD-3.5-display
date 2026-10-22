@@ -80,9 +80,10 @@ Newest first. Add to it whenever something costs more than a few minutes.
   `curl -w %{http_code}` on a new file proves nothing. Check content instead
   (`curl -s .../manifest.json | python3 -m json.tool`, or grep the page for new text) and the
   deployment list (`GET /accounts/<id>/pages/projects/learnnovice-robo/deployments` → commit hash).
-- The first push after connecting Git did **not** trigger a build; `POST .../deployments` builds
-  the latest `main`. If pushes still don't deploy, check GitHub → Settings → Applications →
-  Cloudflare Workers and Pages → repository access includes this repo.
+- Pushes did **not** trigger builds at first, even though the project showed `source.type github`:
+  the Cloudflare GitHub app hadn't been given access to this repo. Fixed by adding the repo under
+  GitHub → Settings → Applications → Cloudflare Workers and Pages → Repository access.
+  `POST .../deployments` (API) builds the latest `main` by hand if it ever stops again.
 - Manifest names: a `"` inside (like `2.8"`) breaks the JSON and the installer silently fails.
   `build-web-firmware.sh` now names boards `2.8-inch` and validates every manifest.
 - `docs/` is public: never put secrets there. The web firmware is built with `MIRROR_NO_CONFIG`
