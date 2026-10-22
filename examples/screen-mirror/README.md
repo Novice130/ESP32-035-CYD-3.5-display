@@ -109,7 +109,8 @@ It's 480 × 320 dots, exactly as the board gets it:
 | "Board didn't answer" | do Step 1 (Install) first. Already did? Unplug the board, plug it back in, wait 3 seconds, connect again |
 | "The page is using the board" when installing | click **Disconnect** in Step 2 first |
 | Over Wi-Fi: "Can't reach the board" | is the board showing **Wi-Fi is ready**? Is the computer on the same Wi-Fi? Try the number shown under the name (like `192.168.0.42`) |
-| Over Wi-Fi it stops after a while | the charger or power bank may be too weak for Wi-Fi: try another one (1 A or more) |
+| Over Wi-Fi it's slow, or stops after a while | move the board **closer to the Wi-Fi router** (a few steps away, nothing metal in between): far away, pictures arrive too slowly. The charger or power bank may also be too weak for Wi-Fi: try another one (1 A or more). Still slow? Use the cable |
+| The page doesn't work in Brave or another browser | use **Google Chrome** or **Microsoft Edge** |
 | The picture freezes when you switch windows | keep the website's window open (it can be behind other windows, just not minimised) |
 
 ---

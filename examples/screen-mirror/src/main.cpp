@@ -25,6 +25,7 @@
 #include <Preferences.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <lwip/sockets.h>
 
 // The web installer's build defines MIRROR_NO_CONFIG, so a local config.h (with a Wi-Fi
 // password) can never end up in a published binary. Wi-Fi saved from the website wins over it.
@@ -352,8 +353,13 @@ static void httpReply(WiFiClient& c, int code, const void* body, size_t n) {
                      "Access-Control-Allow-Headers: *\r\nAccess-Control-Allow-Private-Network: true\r\n"
                      "Content-Type: application/octet-stream\r\nContent-Length: %u\r\nConnection: keep-alive\r\n\r\n",
                      code, code == 200 ? "OK" : code == 204 ? "No Content" : "Error", (unsigned)n);
-    c.write((const uint8_t*)head, k);
-    if (n) c.write((const uint8_t*)body, n);
+    // One non-blocking send. WiFiClient::write() retries a full socket for up to 10 s, which froze
+    // the whole receive task when the browser had gone quiet on a weak link; drop that connection.
+    static uint8_t out[sizeof(head) + 240];   // every body here is small (the biggest is /stats)
+    if (k + n > sizeof(out)) n = 0;
+    memcpy(out, head, k);
+    if (n) memcpy(out + k, body, n);
+    if (send(c.fd(), out, k + n, MSG_DONTWAIT) != (int)(k + n)) c.stop();
 }
 
 // GET /hello, POST /frame (body = header + JPEG), OPTIONS (CORS / local-network preflight)

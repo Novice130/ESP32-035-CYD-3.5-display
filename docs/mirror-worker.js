@@ -13,7 +13,8 @@ const SHARP_MAX = 0.35;    // auto: changes up to this share of the panel go at 
 const SETTLE_MS = 250;     // auto: blurry parts are re-sent sharp after this long without big motion
 const PING_MS = 2000;      // keep-alive while nothing changes (the board gives up after 10 s)
 const WINDOW = 2;          // frames that may be on their way before the board acks
-const STALL_MS = 1500;     // no ack for this long: tell the page, which says hello to the board again
+let stallMs = 1500;        // no ack for this long: tell the page, which says hello to the board again
+                           // (the page passes a longer one for Wi-Fi, where a frame can take a second)
 
 const canvas = new OffscreenCanvas(W, H);
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -29,6 +30,7 @@ onmessage = (e) => {
   const m = e.data;
   if (m.type === "start") {
     ({ mode, maxBytes, maxScale } = m);
+    if (m.stallMs) stallMs = m.stallMs;
     prev = blurry = null;
     unacked = 0;
     lastBig = lastSend = 0;
@@ -67,7 +69,7 @@ async function readFrames(readable) {
 }
 
 setInterval(() => {   // settle timer, keep-alive and stall check, even when no new frames come
-  if (running && unacked && !stallReported && performance.now() - lastAck > STALL_MS) {
+  if (running && unacked && !stallReported && performance.now() - lastAck > stallMs) {
     stallReported = true;
     postMessage({ type: "stalled" });
   }

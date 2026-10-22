@@ -63,7 +63,8 @@
   esp-web-install-button button { margin: 8px 0 4px; }
   .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
   @media (max-width: 620px) { .ways { grid-template-columns: 1fr; } }
-  .way { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .way { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; }
+  .way > button { margin-top: auto; align-self: flex-start; }   /* both buttons sit on the same line */
   .way h3 { margin: 0 0 4px; font-size: 1.05rem; }
   .way p { margin: 4px 0; }
   input[type=text], input[type=password] { font: inherit; width: 100%; padding: 8px 10px; margin: 4px 0 8px;
@@ -327,20 +328,30 @@ async function usbLink(port) {
 async function wifiLink(address) {
   const base = "http://" + address.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   const opts = { targetAddressSpace: "local", cache: "no-store" };
+  const inFlight = new Set();
   const l = {
     kind: "wifi", board: null,
     send(bytes) {
-      fetch(base + "/frame", { ...opts, method: "POST", body: bytes })
+      // Frames still on their way are cancelled when the page starts over (cancelAll): left
+      // running, they piled up as extra connections on a weak link until the board ran out of memory.
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 6000);
+      inFlight.add(ac);
+      fetch(base + "/frame", { ...opts, method: "POST", body: bytes, signal: ac.signal })
         .then((r) => r.arrayBuffer())
         .then((b) => {
           const u = new Uint8Array(b);
           if (u.length === 1 && u[0] === 75) gotAck();
         })
-        .catch(() => {});   // no ack: the stall check notices and reconnects
+        .catch(() => {})   // no ack: the stall check notices and reconnects
+        .finally(() => { clearTimeout(t); inFlight.delete(ac); });
     },
-    close() {},
+    cancelAll() { for (const ac of inFlight) ac.abort(); inFlight.clear(); },
+    close() { l.cancelAll(); },
     async hello() {
-      const r = await fetch(base + "/hello", { ...opts, signal: AbortSignal.timeout(4000) });
+      // generous timeout: on macOS the first lookup of a .local name can take 5 s (the board
+      // answers the IPv4 question at once, but the IPv6 one only times out)
+      const r = await fetch(base + "/hello", { ...opts, signal: AbortSignal.timeout(12000) });
       const b = new Uint8Array(await r.arrayBuffer());
       if (b.length < 13 || dec.decode(b.subarray(0, 4)) !== "CYM1") throw new Error("not a screen mirror");
       l.board = parseHello(b);
@@ -502,7 +513,8 @@ async function share() {
   };
   const processor = new MediaStreamTrackProcessor({ track });
   worker.postMessage({ type: "start", readable: processor.readable, mode: mode(),
-                       maxBytes: link.board.maxBytes, maxScale: link.board.maxScale }, [processor.readable]);
+                       maxBytes: link.board.maxBytes, maxScale: link.board.maxScale,
+                       stallMs: link.kind === "wifi" ? 4000 : 1500 }, [processor.readable]);
   setStatus("shareStatus", "Sharing", "ok");
   $("share").hidden = true;
   $("stop").hidden = false;
@@ -515,6 +527,7 @@ async function resync() {
   setStatus("shareStatus", "Picture got stuck, reconnecting…");
   try {
     if (link.kind === "wifi") {   // the board may be restarting (a weak power supply can do that): ~20 s
+      link.cancelAll();
       for (let t = 0; ; t++) {
         try { await link.hello(); break; } catch (e) {
           if (t >= 12 || !worker) throw e;
