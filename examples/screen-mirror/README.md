@@ -28,18 +28,17 @@ You don't need to download or install anything on the computer. Everything happe
 
 Measure the screen from corner to corner, and count the USB sockets on the side of the board.
 
-<img src="docs/guide/g00-which-board.png" alt="Four yellow boards: 3.5 inch, 2.8 inch with one socket, 2.8 inch with two sockets, 2.4 inch" width="100%">
+<img src="docs/guide/g00-which-board.png" alt="Seven boards drawn to the same scale: 3.5 inch, 3.2 inch, three kinds of 2.8 inch, the Guition 2.8 inch, and 2.4 inch" width="100%">
 
-The website also lists the **3.2"** board (ESP32-2432S032), the 2.8" board whose box says
-**"7789"**, and the 2.8" **Guition JC2432W328**. The model number is printed on the back of the
-board. Not sure? Pick the closest one: if the screen stays black, install again with the next
+On the website the same pictures slide sideways: swipe (or click the arrows) and click your
+board. The model number is printed on the back of the board. Not sure? Pick the closest one: if the screen stays black, install again with the next
 choice; if the colours look wrong, use **Fix colours** (below).
 
 ### Step 1: Put the program on the board *(only the first time)*
 
 1. Plug the board into the computer with the USB cable.
 2. Open **[robo.learnnovice.com](https://robo.learnnovice.com/)** in Chrome or Edge.
-3. Click **your** board in the list.
+3. Find **your** board in the row of pictures and click it (a ✓ appears).
 
    <img src="docs/guide/g01-pick-board.png" alt="Step 1 on the website: the list of boards is circled" width="520">
 

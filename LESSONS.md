@@ -101,6 +101,18 @@ Newest first. Add to it whenever something costs more than a few minutes.
   Black screen after install = wrong backlight pin or driver → try the next choice.
   See BOARDS.md.
 
+### Tab icon didn't change after a new logo
+- Browsers cache favicons by URL, for a long time. Give icon files a **new name** whenever the
+  picture changes (now `tree-32.png`, `tree-192.png`, `tree-touch-180.png`, plus `favicon.ico`
+  because some browsers only ask for that). Also check the tab isn't an old `localhost` copy.
+
+### Board pictures
+- The picker shows drawings from `examples/screen-mirror/tools/make_board_pictures.py`, not
+  seller photos (those are copyrighted). They show what a child can check: screen size (same
+  scale for all), USB sockets, "7789" sticker, "GUITION" print. Online sources didn't confirm
+  PCB colours for every model (the Guition one is drawn dark). Real photos taken by us can
+  replace `docs/boards/<id>.png` with the same names.
+
 ### Speed expectations (so nobody promises 30 fps over Wi-Fi again)
 - USB at 2 Mbaud ≈ 200 KB/s: ~29 fps only while frames stay under ~7 KB (Smooth mode,
   240×160 shown 2×); full-screen sharp frames are 15–25 KB → 8–12 fps.

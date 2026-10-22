@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CYD Screen Mirror</title>
 <meta name="description" content="Show your computer screen on an ESP32 Cheap Yellow Display over a USB cable. Install the program and share your screen right from the browser.">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- new file names whenever the icon changes: browsers cache tab icons by URL -->
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="tree-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="tree-192.png">
+<link rel="apple-touch-icon" href="tree-touch-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
@@ -51,7 +53,27 @@
   .ok .dot { background: var(--green); } .ok { color: var(--green); }
   .bad .dot { background: var(--red); } .bad { color: var(--red); }
   .choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
-  .boards { flex-direction: column; align-items: flex-start; }
+  /* board picker: a row of cards that scrolls sideways and snaps to each card */
+  .step > div { min-width: 0; }   /* lets the board row scroll instead of widening the card */
+  .carousel { position: relative; margin: 10px 0 4px; }
+  .boards { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+    padding: 6px 4px 12px; scrollbar-width: thin; }
+  .board-card { flex: 0 0 196px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 2px;
+    border: 3px solid var(--line); border-radius: 14px; padding: 8px 8px 10px; cursor: pointer; background: var(--card);
+    transition: border-color .15s, transform .15s; }
+  .board-card:hover { transform: translateY(-2px); }
+  .board-card img { width: 100%; height: auto; }
+  .board-card input { position: absolute; opacity: 0; pointer-events: none; }
+  .board-card:has(input:checked) { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 25%, transparent); }
+  .board-card:has(input:checked) b::after { content: " ✓"; color: var(--blue); }
+  .board-card:has(input:focus-visible) { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .board-card .model { font-size: 0.78rem; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .nav { position: absolute; top: 30%; z-index: 2; width: 40px; height: 40px; padding: 0; border-radius: 50%;
+    font-size: 1.6rem; line-height: 1; background: var(--card); color: var(--ink); border: 2px solid var(--line);
+    box-shadow: 0 2px 6px #0002; }
+  .nav.prev { left: -16px; } .nav.next { right: -16px; }
+  .nav[hidden] { display: none; }
+  @media (max-width: 620px) { .nav { display: none; } }
   .choices label { border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
   .choices input { margin-right: 6px; }
   .warn { border-color: var(--red); }
@@ -94,14 +116,32 @@
     <div>
       <h2>Put the program on the board <span class="small">(only the first time)</span></h2>
       <p><b>Which board do you have?</b> Measure the screen corner to corner, and count the USB sockets on the board.</p>
-      <div class="choices boards" role="radiogroup" aria-label="Board">
-        <label><input type="radio" name="board" value="screen-mirror" checked>3.5" screen <span class="small">(ESP32-035, ESP32-3248S035R or C)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-32">3.2" screen <span class="small">(ESP32-2432S032R or C)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-28">2.8" screen, 1 micro-USB socket <span class="small">(ESP32-2432S028R, the most common)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-28-2usb">2.8" screen, 2 sockets: micro-USB + USB-C <span class="small">(ESP32-2432S028R, newer)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-28-st7789">2.8" screen, box or sticker says "7789" <span class="small">(ESP32-2432S028R v3)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-jc2432w328">2.8" screen, board says "Guition" <span class="small">(JC2432W328)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-24">2.4" screen <span class="small">(ESP32-2432S024R or C)</span></label>
+      <div class="carousel">
+        <button type="button" class="nav prev" aria-label="Previous boards">‹</button>
+        <div class="boards" id="boards" role="radiogroup" aria-label="Board">
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror" checked>
+            <img src="boards/screen-mirror.png" alt="" width="180" height="115" loading="lazy">
+            <b>3.5" screen</b><span class="small">1 USB socket · the biggest</span><span class="model">ESP32-035 · ESP32-3248S035</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-32">
+            <img src="boards/screen-mirror-32.png" alt="" width="180" height="115" loading="lazy">
+            <b>3.2" screen</b><span class="small">1 USB socket</span><span class="model">ESP32-2432S032</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-28">
+            <img src="boards/screen-mirror-28.png" alt="" width="180" height="115" loading="lazy">
+            <b>2.8" screen</b><span class="small">1 micro-USB socket · the most common</span><span class="model">ESP32-2432S028R</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-28-2usb">
+            <img src="boards/screen-mirror-28-2usb.png" alt="" width="180" height="115" loading="lazy">
+            <b>2.8" screen, 2 sockets</b><span class="small">micro-USB + USB-C</span><span class="model">ESP32-2432S028R (newer)</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-28-st7789">
+            <img src="boards/screen-mirror-28-st7789.png" alt="" width="180" height="115" loading="lazy">
+            <b>2.8" screen, "7789"</b><span class="small">"7789" on the box or a sticker</span><span class="model">ESP32-2432S028R v3</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-jc2432w328">
+            <img src="boards/screen-mirror-jc2432w328.png" alt="" width="180" height="115" loading="lazy">
+            <b>2.8" Guition</b><span class="small">"GUITION" printed on the board</span><span class="model">JC2432W328</span></label>
+          <label class="board-card"><input type="radio" name="board" value="screen-mirror-24">
+            <img src="boards/screen-mirror-24.png" alt="" width="180" height="115" loading="lazy">
+            <b>2.4" screen</b><span class="small">1 USB socket · the smallest</span><span class="model">ESP32-2432S024</span></label>
+        </div>
+        <button type="button" class="nav next" aria-label="More boards">›</button>
       </div>
       <p class="small">Not sure? The model number is printed on the back of the board. The screen stays
         black after installing? Try the next 2.8" choice. Colours look wrong? Use the
@@ -504,6 +544,18 @@ $("themeToggle").onclick = () => {
 };
 showTheme();
 
+// board picker arrows: slide by about one card
+for (const [cls, dir] of [["prev", -1], ["next", 1]])
+  document.querySelector(`.carousel .${cls}`).onclick = () => $("boards").scrollBy({ left: dir * 208, behavior: "smooth" });
+function showArrows() {   // hide an arrow at the end it points to
+  const b = $("boards");
+  document.querySelector(".carousel .prev").hidden = b.scrollLeft < 8;
+  document.querySelector(".carousel .next").hidden = b.scrollLeft + b.clientWidth > b.scrollWidth - 8;
+}
+$("boards").addEventListener("scroll", showArrows, { passive: true });
+addEventListener("resize", showArrows);
+showArrows();
+
 // step 1: the installer flashes the firmware made for the chosen board
 for (const r of document.querySelectorAll("input[name=board]")) {
   r.onchange = () => {
@@ -514,7 +566,7 @@ for (const r of document.querySelectorAll("input[name=board]")) {
 try {
   const b = localStorage.getItem("cydBoard");
   const r = b && document.querySelector(`input[name=board][value="${b}"]`);
-  if (r) { r.checked = true; r.onchange(); }
+  if (r) { r.checked = true; r.onchange(); r.closest("label").scrollIntoView({ block: "nearest", inline: "center" }); }
 } catch {}
 
 $("showPass").onchange = () => ($("pass").type = $("showPass").checked ? "text" : "password");
