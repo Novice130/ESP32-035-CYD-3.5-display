@@ -35,7 +35,9 @@ Sources (checked October 2026):
 | 2432S028R "2 USB" (micro-USB + USB-C) | 2.8" 320×240 | ST7789 (some lots: ILI9341 with inverted colours) | 21 | same as above | colours inverted / swapped unless `TFT_RGB_ORDER=TFT_BGR` + `TFT_INVERSION_OFF` | `screen_mirror_28_2usb` |
 | 2432S024R | 2.4" 320×240 | ILI9341 | **27** | XPT2046 sharing the display bus, CS 33 | `TFT_INVERSION_OFF` | `screen_mirror_24` |
 | 2432S024C | 2.4" 320×240 | ILI9341 | 27 | CST820 capacitive (I2C 0x15) | as 024R | `screen_mirror_24` (touch not used) |
-| 2432S032R/C | 3.2" 320×240 IPS | ST7789 | 27 | R: unconfirmed (shared bus or own pins) · C: GT911 | IPS, probably needs inversion | not built yet (unconfirmed) |
+| 2432S028R v3 (box says "7789") | 2.8" 320×240 | ST7789 (RGB order) | 21 | same as the 2.8" above | RGB order, no inversion | `screen_mirror_28_st7789` |
+| Guition JC2432W328 (2.8" look-alike) | 2.8" 320×240 | ST7789 (RGB order) | **27** | CST816/820 capacitive (I2C) | no inversion | `screen_mirror_jc2432w328` |
+| 2432S032R/C | 3.2" 320×240 IPS | ST7789 | 27 | R: unconfirmed (shared bus or own pins) · C: GT911 | IPS: inversion on | `screen_mirror_32` |
 | 2432S022C | 2.2" | ST7789 on an **8-bit parallel** bus | 0 | CST816S | different bus: needs other code | — |
 | 8048S043 / 050 / 070, 4827S043 | 4.3–7" 800×480 | RGB parallel on **ESP32-S3** | 2 | GT911 | different chip and bus | — |
 
@@ -52,6 +54,16 @@ Notes:
 - Some sources disagree on the 2.4" green/blue LED order and on the 3.2" touch bus; marked
   unconfirmed above. If colours or touch look wrong on one of those, check those first.
 
+## Colours wrong on a board? (no rebuild needed)
+
+The same model number ships with different panel lots (inverted IPS panels, BGR panels). The
+screen mirror has a **Fix colours** button on the website: it sends `'I'` to the board, which
+cycles through four colour fixes and saves the choice in NVS (`Preferences` key `colours`):
+normal → inverted → red/blue swapped → both → normal. Inversion uses `tft.invertDisplay()`
+relative to the build's `TFT_INVERSION_ON`; the red/blue swap is done in software on each JPEG
+block and on the waiting-screen text colours. So the builds above only need the right **driver,
+size and backlight pin**; colour quirks are fixable by the student.
+
 ## Building for another board
 
 The screen mirror reads everything board-specific from the build flags:
@@ -67,6 +79,9 @@ The screen mirror reads everything board-specific from the build flags:
 .venv/bin/pio run -e screen_mirror_28 -t upload       # 2.8", one USB socket
 .venv/bin/pio run -e screen_mirror_28_2usb -t upload  # 2.8", two USB sockets
 .venv/bin/pio run -e screen_mirror_24 -t upload       # 2.4"
+.venv/bin/pio run -e screen_mirror_28_st7789 -t upload   # 2.8" v3 ("7789" on the box)
+.venv/bin/pio run -e screen_mirror_jc2432w328 -t upload  # Guition 2.8"
+.venv/bin/pio run -e screen_mirror_32 -t upload       # 3.2"
 examples/screen-mirror/tools/build-web-firmware.sh    # rebuild all website installers
 ```
 
@@ -74,7 +89,7 @@ To add a board: copy the `[env:screen_mirror_28]` block in `platformio.ini`, cha
 size, backlight and colour flags, add a `_web` twin, add it to `build-web-firmware.sh` and to
 the board choice in `docs/index.html`.
 
-**Not tested on real hardware yet:** the 2.8" and 2.4" builds compile and use the pins above, but
+**Not tested on real hardware yet:** the 2.8", 3.2" and 2.4" builds compile and use the pins above, but
 only the 3.5" has been run. If a 2.8" shows a white or black screen, check the backlight pin and
 the driver; if colours are inverted, try the other 2.8" build.
 

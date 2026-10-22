@@ -6,35 +6,33 @@
 <title>CYD Screen Mirror</title>
 <meta name="description" content="Show your computer screen on an ESP32 Cheap Yellow Display over a USB cable. Install the program and share your screen right from the browser.">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 <style>
+  /* light (white) is the default; the moon button switches to dark and remembers it */
   :root {
-    --bg: #fffbea; --card: #ffffff; --ink: #1f2430; --muted: #5b6273; --line: #e8e1c8;
+    --bg: #ffffff; --card: #ffffff; --ink: #1f2430; --muted: #5b6273; --line: #e3e6ec;
     --yellow: #ffd23f; --blue: #2563eb; --blue-ink: #ffffff; --green: #15803d; --red: #b91c1c;
-    --shadow: 0 2px 0 #e8e1c8;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #17181d; --card: #22242c; --ink: #f1f2f6; --muted: #a7adbd; --line: #343744;
-      --yellow: #f5c518; --blue: #60a5fa; --blue-ink: #0b1220; --green: #4ade80; --red: #f87171;
-      --shadow: 0 2px 0 #0d0e12;
-    }
+    --shadow: 0 2px 0 #e3e6ec;
   }
   :root[data-theme="dark"] {
     --bg: #17181d; --card: #22242c; --ink: #f1f2f6; --muted: #a7adbd; --line: #343744;
     --yellow: #f5c518; --blue: #60a5fa; --blue-ink: #0b1220; --green: #4ade80; --red: #f87171;
     --shadow: 0 2px 0 #0d0e12;
   }
+  .theme-toggle { position: fixed; top: 12px; right: 12px; z-index: 5; font-size: 0.95rem; padding: 8px 14px;
+    background: var(--card); color: var(--ink); border: 2px solid var(--line); }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }   /* .ways sets display: grid, which would win */
   body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 Nunito, system-ui, sans-serif; }
   main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
   h1 { font-size: 2rem; line-height: 1.2; margin: 8px 0 4px; }
-  h1 .logo { width: 64px; height: 64px; vertical-align: middle; margin: -8px 6px 0 -4px; }
+  h1 .logo { width: 64px; height: 64px; vertical-align: middle; margin: -8px 10px 0 0; border-radius: 12px;
+    box-shadow: 0 1px 4px #0002; }
   .lead { color: var(--muted); margin: 0 0 20px; }
   .card { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 18px 20px;
           margin: 16px 0; box-shadow: var(--shadow); }
@@ -53,6 +51,7 @@
   .ok .dot { background: var(--green); } .ok { color: var(--green); }
   .bad .dot { background: var(--red); } .bad { color: var(--red); }
   .choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+  .boards { flex-direction: column; align-items: flex-start; }
   .choices label { border: 2px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
   .choices input { margin-right: 6px; }
   .warn { border-color: var(--red); }
@@ -76,9 +75,13 @@
 </style>
 </head>
 <body>
+<script>   // before the page draws, so it never flashes the wrong colours
+  try { if (localStorage.getItem("cydTheme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}
+</script>
+<button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch light or dark mode">🌙 Dark</button>
 <main>
   <h1><img class="logo" src="logo.png" alt="" width="64" height="64">Show your screen on the CYD</h1>
-  <p class="lead">Show any window, tab or your whole screen on the ESP32 Cheap Yellow Display (3.5", 2.8" or 2.4").
+  <p class="lead">Show any window, tab or your whole screen on the ESP32 Cheap Yellow Display (3.5", 3.2", 2.8" or 2.4", several makers).
     Follow the three steps. Everything happens in this web page, there's nothing to download.</p>
 
   <div class="card warn" id="unsupported" hidden>
@@ -91,12 +94,18 @@
     <div>
       <h2>Put the program on the board <span class="small">(only the first time)</span></h2>
       <p><b>Which board do you have?</b> Measure the screen corner to corner, and count the USB sockets on the board.</p>
-      <div class="choices" role="radiogroup" aria-label="Board">
-        <label><input type="radio" name="board" value="screen-mirror" checked>3.5" screen <span class="small">(ESP32-035 / ESP32-3248S035)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-28">2.8" screen, 1 USB socket <span class="small">(ESP32-2432S028R)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-28-2usb">2.8" screen, 2 USB sockets <span class="small">(ESP32-2432S028R, newer)</span></label>
-        <label><input type="radio" name="board" value="screen-mirror-24">2.4" screen <span class="small">(ESP32-2432S024R)</span></label>
+      <div class="choices boards" role="radiogroup" aria-label="Board">
+        <label><input type="radio" name="board" value="screen-mirror" checked>3.5" screen <span class="small">(ESP32-035, ESP32-3248S035R or C)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-32">3.2" screen <span class="small">(ESP32-2432S032R or C)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-28">2.8" screen, 1 micro-USB socket <span class="small">(ESP32-2432S028R, the most common)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-28-2usb">2.8" screen, 2 sockets: micro-USB + USB-C <span class="small">(ESP32-2432S028R, newer)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-28-st7789">2.8" screen, box or sticker says "7789" <span class="small">(ESP32-2432S028R v3)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-jc2432w328">2.8" screen, board says "Guition" <span class="small">(JC2432W328)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-24">2.4" screen <span class="small">(ESP32-2432S024R or C)</span></label>
       </div>
+      <p class="small">Not sure? The model number is printed on the back of the board. The screen stays
+        black after installing? Try the next 2.8" choice. Colours look wrong? Use the
+        <b>Fix colours</b> button in step 3.</p>
       <p>Plug the board into the computer with a USB cable. Click the button, pick your board from the list, then
         click <b>Install</b>. It takes about a minute. Don't unplug the cable while it works.</p>
       <p id="installBusy" class="status bad" hidden><span class="dot"></span><span>The page is using the board.
@@ -167,6 +176,9 @@
         <label><input type="radio" name="mode" value="sharp">Sharp</label>
       </div>
       <div><span class="status" id="shareStatus"><span class="dot"></span><span>Not sharing</span></span></div>
+      <p class="small" id="colourFix" hidden>🎨 Colours look strange (red looks blue, or everything looks like a
+        photo negative)? <button id="fixColours" class="secondary" type="button">Fix colours</button>
+        Click until they look right. The board remembers it.</p>
       <video id="preview" muted playsinline></video>
     </div>
   </section>
@@ -380,6 +392,7 @@ function showConnected(on) {
   $("ways").hidden = on;
   $("disconnect").hidden = !on;
   $("share").disabled = !on;
+  $("colourFix").hidden = !on;
   const usb = on && link?.kind === "usb";
   $("installer").hidden = usb;   // the installer needs the USB port to itself
   $("installBusy").hidden = !usb;
@@ -475,6 +488,21 @@ async function refreshWifiStatus() {
 }
 
 $("changeWifi").onclick = () => { $("wifiFields").hidden = false; $("changeWifi").hidden = true; };
+
+// each click moves the board to its next colour fix: inverted, red/blue swapped, both, normal
+$("fixColours").onclick = () => link?.send(header("I"));
+
+// light / dark switch (light is the default)
+function showTheme() {
+  $("themeToggle").textContent = document.documentElement.dataset.theme === "dark" ? "☀️ Light" : "🌙 Dark";
+}
+$("themeToggle").onclick = () => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  if (dark) document.documentElement.dataset.theme = "dark"; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("cydTheme", dark ? "dark" : "light"); } catch {}
+  showTheme();
+};
+showTheme();
 
 // step 1: the installer flashes the firmware made for the chosen board
 for (const r of document.querySelectorAll("input[name=board]")) {

@@ -1,0 +1,8 @@
+{
+  "name": "CYD Screen Mirror (3.2-inch)",
+  "version": "1.1.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    { "chipFamily": "ESP32", "parts": [{ "path": "screen-mirror-32.bin", "offset": 0 }] }
+  ]
+}

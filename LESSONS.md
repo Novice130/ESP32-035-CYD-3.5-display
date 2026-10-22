@@ -92,6 +92,15 @@ Newest first. Add to it whenever something costs more than a few minutes.
 - After changing firmware, rebuild **every** web binary (see "Rebuilding the website firmware"
   in `examples/screen-mirror/README.md`), or the installer ships old code.
 
+### One CYD model number, several different screens
+- The user's board ("ESP32-035") turned out to be the 3.5" ESP32-3248S035R, not the common 2.8"
+  CYD: backlight 27 (not 21) and touch on the display bus (not its own pins). The 2.8" itself
+  exists with ILI9341, ILI9341 + inverted colours, and ST7789 panels.
+- So the website offers one build per known board (driver, size, backlight pin) and a
+  **Fix colours** button for the rest (`'I'` message: invert / swap red-blue, saved in NVS).
+  Black screen after install = wrong backlight pin or driver → try the next choice.
+  See BOARDS.md.
+
 ### Speed expectations (so nobody promises 30 fps over Wi-Fi again)
 - USB at 2 Mbaud ≈ 200 KB/s: ~29 fps only while frames stay under ~7 KB (Smooth mode,
   240×160 shown 2×); full-screen sharp frames are 15–25 KB → 8–12 fps.

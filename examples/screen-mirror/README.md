@@ -16,7 +16,7 @@ ESP32 "Cheap Yellow Display". You set it all up from a **website**: no programs 
 
 | | Thing | Notes |
 | :---: | :--- | :--- |
-| 🟨 | **A CYD board** (3.5", 2.8" or 2.4" screen) | the yellow board with the screen |
+| 🟨 | **A CYD board** (3.5", 3.2", 2.8" or 2.4" screen) | the yellow board with the screen |
 | 🔌 | **A USB cable that can carry data** | some cables only charge a phone: if the board doesn't show up, try another cable |
 | 💻 | **A computer with Google Chrome or Microsoft Edge** | Windows, Mac, Linux or a Chromebook. Safari, Firefox and Brave won't work |
 | 📶 | *(optional)* **Home Wi-Fi** | only if you want to use it without the cable later |
@@ -29,6 +29,11 @@ You don't need to download or install anything on the computer. Everything happe
 Measure the screen from corner to corner, and count the USB sockets on the side of the board.
 
 <img src="docs/guide/g00-which-board.png" alt="Four yellow boards: 3.5 inch, 2.8 inch with one socket, 2.8 inch with two sockets, 2.4 inch" width="100%">
+
+The website also lists the **3.2"** board (ESP32-2432S032), the 2.8" board whose box says
+**"7789"**, and the 2.8" **Guition JC2432W328**. The model number is printed on the back of the
+board. Not sure? Pick the closest one: if the screen stays black, install again with the next
+choice; if the colours look wrong, use **Fix colours** (below).
 
 ### Step 1: Put the program on the board *(only the first time)*
 
@@ -78,6 +83,14 @@ Click **Connect with cable**, then pick the **USB / CH340 / serial** line again 
 > one tab** makes it bigger and clearer.
 >
 > 🎮 For games and videos pick **Smooth**. For drawings and text pick **Best of both**.
+
+### Colours look wrong?
+
+Boards with the same name sometimes have different screens inside. If red looks blue, or the
+picture looks like a photo negative, click **Fix colours** in step 3 (it appears once you're
+connected). Each click tries the next fix; stop when it looks right. The board remembers it.
+
+<img src="docs/guide/g09-fix-colours.png" alt="The Fix colours button in step 3 is circled" width="520">
 
 ### No cable next time: use Wi-Fi
 

@@ -83,13 +83,15 @@ static const uint32_t USB_HELLO = 'C' << 24 | 'Y' << 16 | 'M' << 8 | 'H';   // "
 
 // What the receive task (core 0) hands the drawing loop (core 1), in order: a filled buffer
 // index, or an event. All drawing stays on core 1.
-enum { EV_CONNECTED = 10, EV_WAITING = 11, EV_WIFI = 12 };
+enum { EV_CONNECTED = 10, EV_WAITING = 11, EV_WIFI = 12, EV_COLOURS = 13 };
 
 // Message header (little endian). Tags:
 //   'J' frame: JPEG of len bytes drawn at x, y, zoomed by scale. len = 0 is a keep-alive ping.
 //   'Q' the sender stopped.
 //   'W' (USB) save Wi-Fi: len bytes = u8 n + name of the network, u8 n + password, u8 n + board name.
 //   'U' (USB) about to stream: pauses Wi-Fi now (see wifiPause), acked once it's off.
+//   'I' next colour fix (normal, inverted, red/blue swapped, both), saved on the board. For panels
+//       whose lot differs from the build (inverted IPS panels, BGR panels).
 //   'S' (USB) Wi-Fi status: the reply is "CYMs" + u8 state (0 not set up, 1 joining, 2 joined, 3 paused)
 //       + u8 n + board name + u8 n + IP address. 'W' gets the same reply instead of 'K'.
 struct __attribute__((packed)) FrameHeader {
@@ -113,6 +115,26 @@ static volatile Link sender = LINK_NONE;   // who is sending; only the receive t
 
 // Wi-Fi settings: saved from the website (Preferences "mirror"), else config.h
 static char wifiSsid[33], wifiPass[65], boardName[25];
+// Colour fix chosen on the website ('I'): bit 0 = invert the panel, bit 1 = swap red and blue.
+// Same CYD model numbers ship with different panel lots, so this fixes colours without a rebuild.
+static volatile uint8_t colourMode = 0;
+#ifdef TFT_INVERSION_ON
+static const bool INVERTED_BY_DEFAULT = true;
+#else
+static const bool INVERTED_BY_DEFAULT = false;
+#endif
+
+// big-endian RGB565 (as JPEGDEC hands it over) with red and blue swapped
+static inline uint16_t swapRB(uint16_t v) {
+    uint16_t n = (uint16_t)((v >> 8) | (v << 8));
+    n = (uint16_t)((n >> 11) | (n & 0x07E0) | (n << 11));
+    return (uint16_t)((n >> 8) | (n << 8));
+}
+// a TFT_eSPI colour for text, swapped the same way when needed
+static uint16_t C(uint16_t c) {
+    return (colourMode & 2) ? (uint16_t)((c >> 11) | (c & 0x07E0) | (c << 11)) : c;
+}
+static void applyColours() { tft.invertDisplay(INVERTED_BY_DEFAULT ^ (colourMode & 1)); }
 static volatile bool wifiRestart = false, wifiPause = false, wifiPaused = false;
 static volatile unsigned long usbLastUsed = 0;
 static bool netUp = false;   // Wi-Fi joined and mDNS running (receive task only)
@@ -157,9 +179,9 @@ static uint8_t wifiState() { return !wifiSsid[0] ? 0 : wifiPaused ? 3 : WiFi.sta
 static void status(const char* line1, const char* line2 = "") {
     tft.fillScreen(TFT_BLACK);
     tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextColor(C(TFT_WHITE), TFT_BLACK);
     tft.drawString(line1, CX, Y(145), 4);
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextColor(C(TFT_DARKGREY), TFT_BLACK);
     tft.drawString(line2, CX, Y(185), 2);
 }
 
@@ -167,33 +189,33 @@ static void showWaiting() {
     char line[96];
     tft.fillScreen(TFT_BLACK);
     tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextColor(C(TFT_WHITE), TFT_BLACK);
     tft.drawString("Screen mirror", CX, Y(50), 4);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextColor(C(TFT_YELLOW), TFT_BLACK);
     tft.drawString("Open this website in Chrome or Edge:", CX, Y(100), 2);
-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.setTextColor(C(TFT_CYAN), TFT_BLACK);
     tft.drawString(MIRROR_WEB_URL, CX, Y(124), 2);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextColor(C(TFT_YELLOW), TFT_BLACK);
     tft.drawString(SMALL_PANEL ? "then click  Share my screen." : "connect the board, then click  Share my screen.", CX, Y(148), 2);
 
     switch (wifiState()) {
     case 2:
-        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setTextColor(C(TFT_GREEN), TFT_BLACK);
         tft.drawString("Wi-Fi is ready. Board name:", CX, Y(200), 2);
         snprintf(line, sizeof(line), "%s.local", boardName);
         tft.drawString(line, CX, Y(228), 4);
-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        tft.setTextColor(C(TFT_DARKGREY), TFT_BLACK);
         snprintf(line, sizeof(line), "or address %s", WiFi.localIP().toString().c_str());
         tft.drawString(line, CX, Y(260), 2);
         break;
     case 1:
-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        tft.setTextColor(C(TFT_DARKGREY), TFT_BLACK);
         snprintf(line, sizeof(line), SMALL_PANEL ? "Joining \"%s\"..." : "Wi-Fi: joining \"%s\"...", wifiSsid);
         tft.drawString(line, CX, Y(210), 2);
         tft.drawString("(it must be a 2.4 GHz network)", CX, Y(232), 2);
         break;
     default:
-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        tft.setTextColor(C(TFT_DARKGREY), TFT_BLACK);
         tft.drawString("Using the USB cable.", CX, Y(210), 2);
         tft.drawString(SMALL_PANEL ? "Set up Wi-Fi on the website." : "Set up Wi-Fi on the website to use it without the cable.",
                        CX, Y(232), 2);
@@ -207,6 +229,7 @@ static void loadWifi() {
     prefs.begin("mirror", true);
     String s = prefs.getString("ssid", WIFI_SSID), p = prefs.getString("pass", WIFI_PASSWORD),
            n = prefs.getString("name", MIRROR_HOSTNAME);
+    colourMode = prefs.getUChar("colours", 0) & 3;
     prefs.end();
     strlcpy(wifiSsid, s.c_str(), sizeof(wifiSsid));
     strlcpy(wifiPass, p.c_str(), sizeof(wifiPass));
@@ -329,6 +352,15 @@ static bool handle(Stream& s, Link from, const FrameHeader& h, WiFiClient* c, ui
     }
     if (h.tag == 'U') {
         if (from == LINK_USB) pauseWifi();
+        return true;
+    }
+    if (h.tag == 'I') {
+        colourMode = (colourMode + 1) & 3;
+        prefs.begin("mirror", false);
+        prefs.putUChar("colours", colourMode);
+        prefs.end();
+        LOG("[Mirror] colour fix %d (invert %d, swap red/blue %d)\n", colourMode, colourMode & 1, colourMode >> 1);
+        post(EV_COLOURS);
         return true;
     }
     if (h.tag == 'W' || h.tag == 'S') {
@@ -553,6 +585,8 @@ static int drawBlocks(JPEGDRAW* d) {
             for (int k = 1; k < S; k++) memcpy(row + k * ow, row, ow * 2);
         }
     }
+    if (colourMode & 2)
+        for (int i = 0, n = w * S * h * S; i < n; i++) out[i] = swapRB(out[i]);
     tft.pushImageDMA(px, py, w * S, h * S, out);
     return 1;
 }
@@ -620,7 +654,8 @@ void setup() {
     readyQ = xQueueCreate(8, sizeof(int));
     for (int k = 0; k < 2; k++) xQueueSend(freeQ, &k, 0);
 
-    loadWifi();
+    loadWifi();          // also the saved colour fix
+    applyColours();
     startWifi();
     showWaiting();
     Serial.printf("[ESP32-035] Wi-Fi %s, USB at %d baud. Heap free: %u bytes (largest block %u)\n",
@@ -651,6 +686,9 @@ void loop() {
         } else if (item == EV_WAITING) {
             waiting = true;
             showWaiting();
+        } else if (item == EV_COLOURS) {
+            applyColours();
+            if (waiting) showWaiting();   // its text colours changed
         } else if (item == EV_WIFI) {
             warned = false;
             wifiSince = millis();

@@ -14,7 +14,10 @@ for row in \
     "screen-mirror|screen_mirror_web|CYD Screen Mirror (3.5-inch)" \
     "screen-mirror-28|screen_mirror_28_web|CYD Screen Mirror (2.8-inch, 1 USB)" \
     "screen-mirror-28-2usb|screen_mirror_28_2usb_web|CYD Screen Mirror (2.8-inch, 2 USB)" \
-    "screen-mirror-24|screen_mirror_24_web|CYD Screen Mirror (2.4-inch)"; do
+    "screen-mirror-24|screen_mirror_24_web|CYD Screen Mirror (2.4-inch)" \
+    "screen-mirror-28-st7789|screen_mirror_28_st7789_web|CYD Screen Mirror (2.8-inch, ST7789)" \
+    "screen-mirror-jc2432w328|screen_mirror_jc2432w328_web|CYD Screen Mirror (Guition JC2432W328)" \
+    "screen-mirror-32|screen_mirror_32_web|CYD Screen Mirror (3.2-inch)"; do
     dir="${row%%|*}"; rest="${row#*|}"; env="${rest%%|*}"; name="${rest#*|}"
     echo "== $env -> docs/firmware/$dir"
     .venv/bin/pio run -e "$env" | tail -1
