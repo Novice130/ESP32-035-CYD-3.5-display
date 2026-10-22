@@ -120,7 +120,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Video Clip Player** | `[env:video_clip]` | Plays a looping video clip with sound: JPEG frames zoomed 2x (240x136, 15 fps) or 3x (160x90, for ~2.5 min clips), 8-bit audio through the DAC on GPIO 26. Convert your own video with `tools/make_clip.py`, or stream a whole video over Wi-Fi from a server. 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s. | [`examples/video-clip/`](examples/video-clip/) |
 | **Cloud Game (Flappy tribute)** | `[env:cloud_game]` | The game runs on a Sipeed NanoKVM and streams 240x160 frames over Wi-Fi at 25-30 fps; this board draws them and sends back one button (cover the light sensor). | [`examples/cloud-game/`](examples/cloud-game/) |
-| **Screen Mirror** | `[env:screen_mirror]` | Shows a computer's screen, window or tab on the board. Easiest: the [Screen Mirror website](https://novice130.github.io/ESP32-035-CYD-3.5-display/) installs it and shares over a USB cable from Chrome/Edge. Or Wi-Fi from a Mac with `tools/mirror.sh`. Sends only what changed, full 480x320 when calm, half resolution while a lot moves; ~28 fps with full-screen video. Idea by Abdul Samad Idowu. | [`examples/screen-mirror/`](examples/screen-mirror/) |
+| **Screen Mirror** | `[env:screen_mirror]` | Shows a computer's screen, window or tab on the board. Easiest: the [Screen Mirror website](https://robo.learnnovice.com/) installs it and shares over a USB cable from Chrome/Edge. Or Wi-Fi from a Mac with `tools/mirror.sh`. Sends only what changed, full 480x320 when calm, half resolution while a lot moves; ~28 fps with full-screen video. Idea by Abdul Samad Idowu. | [`examples/screen-mirror/`](examples/screen-mirror/) |
 | **Manga Ultra Instinct** | `[env:manga_aura]` | Glowing anime eyes, dynamic radial action speedlines, menacing JoJo SFX (ゴゴゴ), and electric lightning arcs. | [`examples/manga-aura/`](examples/manga-aura/) |
 | **Neo-Tokyo 2088 Synthwave** | `[env:neo_tokyo_synthwave]` | 3D perspective infinite neon wireframe grid, retro anime sun with scanline cuts, and Mt. Fuji silhouette. | [`examples/neo-tokyo-synthwave/`](examples/neo-tokyo-synthwave/) |
 | **Rasengan Ki Energy Vortex** | `[env:rasengan_vortex]` | 90+ particles swirling in a 3D spherical vortex, concentric opposing rings, and pulsing energy shockwaves. | [`examples/rasengan-vortex/`](examples/rasengan-vortex/) |
@@ -170,7 +170,7 @@ examples/video-clip/tools/flash_clip.sh clip.bin
 # Flash the Cloud Game thin client (needs examples/cloud-game/include/config.h and a game server):
 pio run -e cloud_game -t upload
 
-# Screen Mirror: easiest from the website https://novice130.github.io/ESP32-035-CYD-3.5-display/ (installs + shares over USB).
+# Screen Mirror: easiest from the website https://robo.learnnovice.com/ (installs + shares over USB).
 # Or flash it yourself (add examples/screen-mirror/include/config.h for Wi-Fi), then on a Mac:
 pio run -e screen_mirror -t upload
 examples/screen-mirror/tools/mirror.sh

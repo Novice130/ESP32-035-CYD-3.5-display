@@ -46,7 +46,7 @@
 #define USB_BAUD 2000000   // the web page opens the port at the same speed
 #endif
 #define HTTP_PORT 80
-#define MIRROR_WEB_URL "novice130.github.io/ESP32-035-CYD-3.5-display"
+#define MIRROR_WEB_URL "robo.learnnovice.com"
 
 // --- PIN DEFINITIONS FOR CYD 3.5" (ESP32-035) ---
 #define CYD_BACKLIGHT   27   // Backlight is GPIO 27 (Active HIGH)

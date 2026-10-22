@@ -23,7 +23,7 @@ ESP32 "Cheap Yellow Display". You set it all up from a **website**: no programs 
 
 ### Step by step
 
-Open **[novice130.github.io/ESP32-035-CYD-3.5-display/](https://novice130.github.io/ESP32-035-CYD-3.5-display/)** in Chrome or Edge.
+Open **[robo.learnnovice.com](https://robo.learnnovice.com/)** in Chrome or Edge.
 The page has three big numbered steps:
 
 <img src="docs/website-steps.png" alt="The Screen Mirror website with three numbered steps: install, connect, share" width="520">
@@ -124,7 +124,7 @@ measurements. You don't need it to use Screen Mirror.
 
 Two ways to send a screen:
 
-- **🌐 The website** ([https://novice130.github.io/ESP32-035-CYD-3.5-display/](https://novice130.github.io/ESP32-035-CYD-3.5-display/), files in [`docs/`](../../docs/)): install, then share over the
+- **🌐 The website** ([https://robo.learnnovice.com/](https://robo.learnnovice.com/), files in [`docs/`](../../docs/)): install, then share over the
   USB cable or, after the one-time Wi-Fi setup, over Wi-Fi. Chrome or Edge, including Chromebooks.
 - **📶 A Mac script**: `tools/mirror.sh` sends the Mac's screen over Wi-Fi (no browser).
 
@@ -146,8 +146,15 @@ full 480x320 whenever it isn't moving much.
 ## 🌐 The website
 
 [`docs/index.html`](../../docs/index.html) and [`docs/mirror-worker.js`](../../docs/mirror-worker.js),
-published with GitHub Pages at https://novice130.github.io/ESP32-035-CYD-3.5-display/. It works in Chrome and Edge on Windows, macOS, Linux and
+published on Cloudflare Pages (project `robo-learnnovice`) at https://robo.learnnovice.com/. It works in Chrome and Edge on Windows, macOS, Linux and
 ChromeOS (they have Web Serial; Safari and Firefox don't).
+
+To publish a change to `docs/` (needs a Cloudflare API token with Pages edit rights in
+`CLOUDFLARE_API_TOKEN`, and the account id in `CLOUDFLARE_ACCOUNT_ID`):
+
+```bash
+npx wrangler@3 pages deploy docs --project-name robo-learnnovice --branch main
+```
 
 - **Install:** [ESP Web Tools](https://esphome.github.io/esp-web-tools/) flashes
   `docs/firmware/screen-mirror/screen-mirror.bin` (built from `[env:screen_mirror_web]`, which never
