@@ -2,12 +2,12 @@
 // Runs in a worker so it keeps going at full speed while the page is in the background
 // (which is exactly when someone is showing another window).
 //
-// Every frame: fit into 480x320 -> compare with the last frame sent -> JPEG of only the
-// rectangle that changed. Small changes go at full 480x320; when over 35% of the screen moves
+// Every frame: fit into the panel (e.g. 480x320) -> compare with the last frame sent -> JPEG of only the
+// rectangle that changed. Small changes go at full resolution; when over 35% of the screen moves
 // (video, scrolling) the change goes at 240x160 shown 2x, which the board draws twice as fast,
 // and is re-sent sharp once things calm down. Same rules as tools/mirror.py.
 
-const W = 480, H = 320;
+let W = 480, H = 320;       // the board's panel, from its hello (480x320 on the 3.5", 320x240 on the 2.8")
 const ALIGN = 16;          // changed rectangles snap to JPEG block edges
 const SHARP_MAX = 0.35;    // auto: changes up to this share of the panel go at full resolution
 const SETTLE_MS = 250;     // auto: blurry parts are re-sent sharp after this long without big motion
@@ -16,9 +16,13 @@ const WINDOW = 2;          // frames that may be on their way before the board a
 let stallMs = 1500;        // no ack for this long: tell the page, which says hello to the board again
                            // (the page passes a longer one for Wi-Fi, where a frame can take a second)
 
-const canvas = new OffscreenCanvas(W, H);
-const ctx = canvas.getContext("2d", { willReadFrequently: true });
-ctx.imageSmoothingQuality = "high";
+let canvas, ctx;
+function makeCanvas() {
+  canvas = new OffscreenCanvas(W, H);
+  ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingQuality = "high";
+}
+makeCanvas();
 
 let running = false, busy = false, latest = null;
 let prev = null, blurry = null, lastBig = 0, lastSend = 0, unacked = 0;
@@ -31,6 +35,7 @@ onmessage = (e) => {
   if (m.type === "start") {
     ({ mode, maxBytes, maxScale } = m);
     if (m.stallMs) stallMs = m.stallMs;
+    if (m.w && m.h && (m.w !== W || m.h !== H)) { W = m.w; H = m.h; makeCanvas(); }
     prev = blurry = null;
     unacked = 0;
     lastBig = lastSend = 0;

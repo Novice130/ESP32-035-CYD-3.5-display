@@ -5,6 +5,14 @@
 [![Touch](https://img.shields.io/badge/Touch-XPT2046%20Resistive-green.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
 
+> 🖥️ **Just want your computer screen on the board?** Open **[robo.learnnovice.com](https://robo.learnnovice.com/)**
+> in Chrome or Edge and follow the pictures in the [Screen Mirror student guide](examples/screen-mirror/README.md).
+> Nothing to download. Works on the 3.5", 2.8" and 2.4" CYD boards.
+>
+> 🟨 **Have a different CYD** (like the common 2.8" ESP32-2432S028R)? See [BOARDS.md](BOARDS.md) for
+> pins and differences. 🧰 **Fixing something?** Read [LESSONS.md](LESSONS.md) first: problems we
+> already solved and how.
+
 ## 🧒 Start here (for students)
 
 This board is a tiny computer (an **ESP32** chip) built onto the back of a 3.5-inch colour touch

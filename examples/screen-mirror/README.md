@@ -16,52 +16,100 @@ ESP32 "Cheap Yellow Display". You set it all up from a **website**: no programs 
 
 | | Thing | Notes |
 | :---: | :--- | :--- |
-| 🟨 | **The CYD board** (ESP32-035, 3.5" screen) | the yellow board with the screen |
+| 🟨 | **A CYD board** (3.5", 2.8" or 2.4" screen) | the yellow board with the screen |
 | 🔌 | **A USB cable that can carry data** | some cables only charge a phone: if the board doesn't show up, try another cable |
-| 💻 | **A computer with Google Chrome or Microsoft Edge** | Windows, Mac, Linux or a Chromebook. Safari and Firefox can't do this |
+| 💻 | **A computer with Google Chrome or Microsoft Edge** | Windows, Mac, Linux or a Chromebook. Safari, Firefox and Brave won't work |
 | 📶 | *(optional)* **Home Wi-Fi** | only if you want to use it without the cable later |
 
-### Step by step
+You don't need to download or install anything on the computer. Everything happens on one website:
+**[robo.learnnovice.com](https://robo.learnnovice.com/)**
 
-Open **[robo.learnnovice.com](https://robo.learnnovice.com/)** in Chrome or Edge.
-The page has three big numbered steps:
+### Step 0: Which board do you have?
 
-<img src="docs/website-steps.png" alt="The Screen Mirror website with three numbered steps: install, connect, share" width="520">
+Measure the screen from corner to corner, and count the USB sockets on the side of the board.
 
-1. **Plug the board into the computer** with the USB cable.
-2. **Step 1 – Install** *(only the first time)*: click **Install Screen Mirror**, choose your board
-   from the list (its name often has *USB*, *CH340* or *serial* in it), then click **Install**.
-   If it offers to **erase** the board, leave that box empty: then a board that already has
-   Wi-Fi set up keeps it.
-   Wait about a minute and don't unplug it. When it's done, close the little installer window.
-   The board now says **Screen mirror**.
-3. **Step 2 – Connect**: click **Connect with cable** and choose your board again.
-4. **Step 3 – Share**: click **Share my screen**. Chrome asks *what* to share: pick a **tab**, a
-   **window** or your **entire screen**, then click **Share**.
-5. Look at the board: it shows the same picture! 🎉 Click **Stop** when you're done.
+<img src="docs/guide/g00-which-board.png" alt="Four yellow boards: 3.5 inch, 2.8 inch with one socket, 2.8 inch with two sockets, 2.4 inch" width="100%">
 
-> 🔤 The board's screen is small (480 × 320 dots), so a whole computer screen gets squeezed and
-> tiny writing is hard to read. Sharing **one window or one tab** makes it bigger and clearer.
+### Step 1: Put the program on the board *(only the first time)*
+
+1. Plug the board into the computer with the USB cable.
+2. Open **[robo.learnnovice.com](https://robo.learnnovice.com/)** in Chrome or Edge.
+3. Click **your** board in the list.
+
+   <img src="docs/guide/g01-pick-board.png" alt="Step 1 on the website: the list of boards is circled" width="520">
+
+4. Click **Install Screen Mirror**.
+
+   <img src="docs/guide/g02-install.png" alt="The Install Screen Mirror button is circled" width="520">
+
+5. A small window opens. Click the line with **USB**, **CH340** or **serial** in it, then
+   **Connect**.
+
+   <img src="docs/guide/g02b-port-picker.png" alt="Chrome's port window: the USB Serial line and the Connect button are circled" width="460">
+
+6. Click **Install**. If it asks about **erasing** the board, leave that box **empty**.
+   Wait about a minute and **don't unplug** the board. When it says it's done, close the window.
+7. The board's screen now says **Screen mirror** 🎉
+
+   <img src="docs/guide/g08-board-ready.png" alt="What the board shows when it's ready, on a 3.5 inch and a 2.8 inch board" width="100%">
+
+### Step 2: Connect
+
+Click **Connect with cable**, then pick the **USB / CH340 / serial** line again and click
+**Connect**. The page says **Connected with the cable** in green.
+
+<img src="docs/guide/g03-connect-cable.png" alt="The Connect with cable button is circled" width="520">
+
+### Step 3: Share your screen
+
+1. Click **Share my screen**.
+
+   <img src="docs/guide/g04-share.png" alt="The Share my screen button is circled" width="520">
+
+2. Chrome asks what to share. Pick **Window**, click the window you want (a drawing, a game,
+   slides...), then click **Share**.
+
+   <img src="docs/guide/g04b-share-picker.png" alt="Chrome's share window: the Window tab, one window and the Share button are circled" width="520">
+
+3. Look at the board: it shows the same picture! Click **Stop** when you're done.
+
+> 🔤 The board's screen is small (480 × 320 dots on the 3.5", 320 × 240 on the 2.8" and 2.4"), so
+> a whole computer screen gets squeezed and tiny writing is hard to read. Sharing **one window or
+> one tab** makes it bigger and clearer.
+>
+> 🎮 For games and videos pick **Smooth**. For drawings and text pick **Best of both**.
 
 ### No cable next time: use Wi-Fi
 
-You can set up Wi-Fi once, then power the board from any phone charger and send your screen
-through the air.
+Set up Wi-Fi once. After that you can power the board from any phone charger and send your
+screen through the air.
 
-<img src="docs/website-connected.png" alt="Step 2 connected with the cable, showing the Set up Wi-Fi box and the message Wi-Fi is ready" width="520">
-
-1. While the board is **connected with the cable**, a **Set up Wi-Fi** box appears.
+1. Connect **with the cable** (Step 2). A **Set up Wi-Fi** box appears.
 2. Type your **Wi-Fi name** and **password**, and give your board a **name** (like `cyd`, or
    `cyd2` if your class has several boards). Click **Save Wi-Fi to the board**.
-   The name and password travel through the cable into the board only, not onto the internet.
-3. When it says **Wi-Fi is ready**, click **Disconnect** and plug the board into a charger.
-   The board's screen shows its name, for example **cyd.local**.
-4. On the website, type that name in **Over Wi-Fi** and click **Connect over Wi-Fi**. The first
-   time, Chrome asks to *access devices on your local network*: click **Allow**.
+   The name and password go through the cable into the board only, not onto the internet.
+
+   <img src="docs/guide/g05-wifi-setup.png" alt="The Wi-Fi name, password and board name boxes and the Save button are circled" width="520">
+
+3. When it says **Wi-Fi is ready**, write down the board name (for example **cyd.local**).
+   Click **Disconnect** and plug the board into a charger.
+
+   <img src="docs/guide/g06-wifi-ready.png" alt="The green message Wi-Fi is ready, connect over Wi-Fi to cyd.local" width="520">
+
+4. On the website, type the board name in **Over Wi-Fi** and click **Connect over Wi-Fi**. The
+   first time, Chrome asks to *access devices on your local network*: click **Allow**.
+
+   <img src="docs/guide/g07-connect-wifi.png" alt="The board name box and the Connect over Wi-Fi button are circled" width="520">
+
 5. Click **Share my screen**, just like before.
 
-> 📶 The board needs **2.4 GHz** Wi-Fi, and the computer must be on the **same** Wi-Fi. Many
-> school networks don't let devices talk to each other: if it can't find the board, use the cable.
+> 📶 The board needs **2.4 GHz** Wi-Fi, and the computer must be on the **same** Wi-Fi. Keep the
+> board **near the Wi-Fi router**: far away, the picture gets slow or stops. Many school networks
+> don't let devices talk to each other: if it can't find the board, use the cable.
+>
+> The Wi-Fi you saved stays on the board, even when you install the program again (as long as
+> you leave the erase box empty). Connecting the cable switches the board's Wi-Fi off for a
+> moment; it comes back about 15 seconds after you click **Disconnect**.
 
 ### 🔬 How does it work? (the simple version)
 
@@ -175,15 +223,21 @@ npx wrangler@3 pages deploy docs --project-name robo-learnnovice --branch main
   2,000,000 baud line lost bytes. Wi-Fi comes back 15 s after the cable goes quiet.
 - Memory is tight with Wi-Fi: frames are capped at 40 KB (the senders lower JPEG quality to fit).
 
-Rebuild the installer firmware after changing the code:
+Rebuild the installer firmware for **every board** after changing the code, then commit and push
+(Cloudflare Pages publishes `docs/` from `main` automatically):
 
 ```bash
-pio run -e screen_mirror_web
-B=.pio/build/screen_mirror_web
-.venv/bin/python -m esptool --chip esp32 merge_bin -o docs/firmware/screen-mirror/screen-mirror.bin \
-  --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 $B/bootloader.bin 0x8000 $B/partitions.bin \
-  0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 $B/firmware.bin
+examples/screen-mirror/tools/build-web-firmware.sh   # 3.5", 2.8" (1 and 2 USB), 2.4"
 ```
+
+Board differences (backlight pin, driver, panel size) live in `platformio.ini`; see
+[BOARDS.md](../../BOARDS.md). The page and `mirror.py` read the panel size from the board's hello,
+so they work on 480×320 and 320×240 panels alike. Problems we hit before and their fixes:
+[LESSONS.md](../../LESSONS.md).
+
+The guide pictures: `g01`–`g07` are screenshots of the real page (taken with Playwright, red
+marks added in the page with CSS); `g00`, `g02b`, `g04b`, `g08` are drawn by
+`tools/make_guide_pictures.py`.
 
 ## 📶 Wi-Fi from a Mac
 

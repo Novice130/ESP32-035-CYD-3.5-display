@@ -76,7 +76,7 @@
 <body>
 <main>
   <h1>📺 Show your screen on the CYD</h1>
-  <p class="lead">Show any window, tab or your whole screen on the ESP32 Cheap Yellow Display (3.5", 480×320).
+  <p class="lead">Show any window, tab or your whole screen on the ESP32 Cheap Yellow Display (3.5", 2.8" or 2.4").
     Follow the three steps. Everything happens in this web page, there's nothing to download.</p>
 
   <div class="card warn" id="unsupported" hidden>
@@ -88,6 +88,13 @@
     <div class="num">1</div>
     <div>
       <h2>Put the program on the board <span class="small">(only the first time)</span></h2>
+      <p><b>Which board do you have?</b> Measure the screen corner to corner, and count the USB sockets on the board.</p>
+      <div class="choices" role="radiogroup" aria-label="Board">
+        <label><input type="radio" name="board" value="screen-mirror" checked>3.5" screen <span class="small">(ESP32-035 / ESP32-3248S035)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-28">2.8" screen, 1 USB socket <span class="small">(ESP32-2432S028R)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-28-2usb">2.8" screen, 2 USB sockets <span class="small">(ESP32-2432S028R, newer)</span></label>
+        <label><input type="radio" name="board" value="screen-mirror-24">2.4" screen <span class="small">(ESP32-2432S024R)</span></label>
+      </div>
       <p>Plug the board into the computer with a USB cable. Click the button, pick your board from the list, then
         click <b>Install</b>. It takes about a minute. Don't unplug the cable while it works.</p>
       <p id="installBusy" class="status bad" hidden><span class="dot"></span><span>The page is using the board.
@@ -222,7 +229,7 @@ function header(tag, len = 0) {
 
 function parseHello(b) {
   const v = new DataView(b.buffer, b.byteOffset);
-  return { maxBytes: v.getUint32(8, true), maxScale: v.getUint8(12) };
+  return { w: v.getUint16(4, true), h: v.getUint16(6, true), maxBytes: v.getUint32(8, true), maxScale: v.getUint8(12) };
 }
 
 function gotAck(n = 1) {
@@ -467,6 +474,19 @@ async function refreshWifiStatus() {
 
 $("changeWifi").onclick = () => { $("wifiFields").hidden = false; $("changeWifi").hidden = true; };
 
+// step 1: the installer flashes the firmware made for the chosen board
+for (const r of document.querySelectorAll("input[name=board]")) {
+  r.onchange = () => {
+    $("installer").setAttribute("manifest", `firmware/${r.value}/manifest.json`);
+    try { localStorage.setItem("cydBoard", r.value); } catch {}
+  };
+}
+try {
+  const b = localStorage.getItem("cydBoard");
+  const r = b && document.querySelector(`input[name=board][value="${b}"]`);
+  if (r) { r.checked = true; r.onchange(); }
+} catch {}
+
 $("showPass").onchange = () => ($("pass").type = $("showPass").checked ? "text" : "password");
 
 $("saveWifi").onclick = async () => {
@@ -525,7 +545,7 @@ async function share() {
   };
   const processor = new MediaStreamTrackProcessor({ track });
   worker.postMessage({ type: "start", readable: processor.readable, mode: mode(),
-                       maxBytes: link.board.maxBytes, maxScale: link.board.maxScale,
+                       w: link.board.w, h: link.board.h, maxBytes: link.board.maxBytes, maxScale: link.board.maxScale,
                        stallMs: link.kind === "wifi" ? 4000 : 1500 }, [processor.readable]);
   setStatus("shareStatus", "Sharing", "ok");
   $("share").hidden = true;

@@ -49,14 +49,20 @@
 #define MIRROR_WEB_URL "robo.learnnovice.com"
 
 // --- PIN DEFINITIONS FOR CYD 3.5" (ESP32-035) ---
-#define CYD_BACKLIGHT   27   // Backlight is GPIO 27 (Active HIGH)
-#define CYD_LED_RED     4    // Active LOW (0 = ON, 1 = OFF)
+// Board-specific pins and panel size come from the PlatformIO env (TFT_BL, TOUCH_CS, TFT_WIDTH,
+// TFT_HEIGHT), so one source builds for the 3.5" ESP32-035 / 3248S035 and the 2.8" 2432S028R.
+#define CYD_BACKLIGHT   TFT_BL   // 27 on the 3.5", 21 on the 2.8" (active HIGH on both)
+#define CYD_LED_RED     4    // Active LOW (0 = ON, 1 = OFF), same pins on every CYD
 #define CYD_LED_GREEN   16
 #define CYD_LED_BLUE    17
-#define XPT2046_CS      33   // touch chip shares the display bus: keep it deselected
+#define XPT2046_CS      TOUCH_CS   // 33: keep the touch chip deselected
 
-#define PANEL_W 480
-#define PANEL_H 320
+// landscape (setRotation(1)): 480x320 on the 3.5", 320x240 on the 2.8"
+#define PANEL_W (TFT_HEIGHT > TFT_WIDTH ? TFT_HEIGHT : TFT_WIDTH)
+#define PANEL_H (TFT_HEIGHT > TFT_WIDTH ? TFT_WIDTH : TFT_HEIGHT)
+#define CX (PANEL_W / 2)
+#define Y(y) ((y) * PANEL_H / 320)       // layout was drawn for 320 rows: squeeze it on smaller panels
+#define SMALL_PANEL (PANEL_W < 400)      // 320 wide: long lines get shorter wording
 #define MAX_SCALE 2
 #define MAX_FRAME_BYTES (40 * 1024)   // biggest JPEG per buffer; the sender lowers quality to fit
 #define IDLE_TIMEOUT_MS 10000         // senders ping every 2 s while their screen is still
@@ -152,9 +158,9 @@ static void status(const char* line1, const char* line2 = "") {
     tft.fillScreen(TFT_BLACK);
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString(line1, 240, 145, 4);
+    tft.drawString(line1, CX, Y(145), 4);
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString(line2, 240, 185, 2);
+    tft.drawString(line2, CX, Y(185), 2);
 }
 
 static void showWaiting() {
@@ -162,34 +168,35 @@ static void showWaiting() {
     tft.fillScreen(TFT_BLACK);
     tft.setTextDatum(MC_DATUM);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("Screen mirror", 240, 50, 4);
+    tft.drawString("Screen mirror", CX, Y(50), 4);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.drawString("Open this website in Chrome or Edge:", 240, 100, 2);
+    tft.drawString("Open this website in Chrome or Edge:", CX, Y(100), 2);
     tft.setTextColor(TFT_CYAN, TFT_BLACK);
-    tft.drawString(MIRROR_WEB_URL, 240, 124, 2);
+    tft.drawString(MIRROR_WEB_URL, CX, Y(124), 2);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.drawString("connect the board, then click  Share my screen.", 240, 148, 2);
+    tft.drawString(SMALL_PANEL ? "then click  Share my screen." : "connect the board, then click  Share my screen.", CX, Y(148), 2);
 
     switch (wifiState()) {
     case 2:
         tft.setTextColor(TFT_GREEN, TFT_BLACK);
-        tft.drawString("Wi-Fi is ready. Board name:", 240, 200, 2);
+        tft.drawString("Wi-Fi is ready. Board name:", CX, Y(200), 2);
         snprintf(line, sizeof(line), "%s.local", boardName);
-        tft.drawString(line, 240, 228, 4);
+        tft.drawString(line, CX, Y(228), 4);
         tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
         snprintf(line, sizeof(line), "or address %s", WiFi.localIP().toString().c_str());
-        tft.drawString(line, 240, 260, 2);
+        tft.drawString(line, CX, Y(260), 2);
         break;
     case 1:
         tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-        snprintf(line, sizeof(line), "Wi-Fi: joining \"%s\"...", wifiSsid);
-        tft.drawString(line, 240, 210, 2);
-        tft.drawString("(it must be a 2.4 GHz network)", 240, 232, 2);
+        snprintf(line, sizeof(line), SMALL_PANEL ? "Joining \"%s\"..." : "Wi-Fi: joining \"%s\"...", wifiSsid);
+        tft.drawString(line, CX, Y(210), 2);
+        tft.drawString("(it must be a 2.4 GHz network)", CX, Y(232), 2);
         break;
     default:
         tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-        tft.drawString("Using the USB cable.", 240, 210, 2);
-        tft.drawString("Set up Wi-Fi on the website to use it without the cable.", 240, 232, 2);
+        tft.drawString("Using the USB cable.", CX, Y(210), 2);
+        tft.drawString(SMALL_PANEL ? "Set up Wi-Fi on the website." : "Set up Wi-Fi on the website to use it without the cable.",
+                       CX, Y(232), 2);
     }
 }
 

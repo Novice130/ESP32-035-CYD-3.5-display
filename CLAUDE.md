@@ -4,6 +4,18 @@ Repo = ESP32-035 (CYD 3.5", ST7796 480x320, XPT2046 touch) hardware guide + stan
 Every visual project lives in `examples/<name>/` with its own PlatformIO env. Best reference
 project: `examples/pokemon-kalos/` (framebuffer engine, art pipeline, simulator, tap controls).
 
+## Read first
+- `LESSONS.md`: every problem we already hit (Wi-Fi freezes, .local lookups, NVS wiped by the
+  web installer, busy serial ports, hosting) with the evidence and the fix. Add new ones there.
+- `BOARDS.md`: other CYD boards (2.8" 2432S028R has backlight 21 and touch on its own pins;
+  2.4"/3.5" have backlight 27 and touch on the display bus) and how the screen-mirror envs differ.
+- Screen-mirror website = `docs/`, auto-deployed by Cloudflare Pages (project `learnnovice-robo`,
+  output dir `docs`) on every push to `main` → https://robo.learnnovice.com/. After firmware
+  changes run `examples/screen-mirror/tools/build-web-firmware.sh` (all boards, refuses to ship
+  the Wi-Fi password), commit `docs/firmware`, push, then `curl` the live manifest to confirm.
+- Debug on hardware with evidence, not guesses: `curl http://<board>/stats`, serial log at
+  2 Mbaud, a temporary `[DIAG]` line if needed (remove before commit).
+
 ## Toolchain (already installed)
 - PlatformIO is in the venv: `.venv/bin/pio` (not on PATH).
 - Board port: `/dev/cu.usbserial-11110` (set in `platformio.ini`). `flash_cyd.py` has an old port; prefer pio.
