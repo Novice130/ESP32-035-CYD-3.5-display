@@ -28,7 +28,7 @@ You don't need to download or install anything on the computer. Everything happe
 
 Measure the screen from corner to corner, and count the USB sockets on the side of the board.
 
-<img src="docs/guide/g00-which-board.png" alt="Seven boards drawn to the same scale: 3.5 inch, 3.2 inch, three kinds of 2.8 inch, the Guition 2.8 inch, and 2.4 inch" width="100%">
+<img src="docs/guide/g00-which-board.png" alt="Photos of seven boards: 3.5 inch, 3.2 inch, three kinds of 2.8 inch, the Guition 2.8 inch, and 2.4 inch" width="100%">
 
 On the website the same pictures slide sideways: swipe (or click the arrows) and click your
 board. The model number is printed on the back of the board. Not sure? Pick the closest one: if the screen stays black, install again with the next
@@ -249,7 +249,8 @@ so they work on 480×320 and 320×240 panels alike. Problems we hit before and t
 
 The guide pictures: `g01`–`g07` are screenshots of the real page (taken with Playwright, red
 marks added in the page with CSS); `g00`, `g02b`, `g04b`, `g08` are drawn by
-`tools/make_guide_pictures.py`.
+`tools/make_guide_pictures.py`. Board photos (picker and chart) come from espboards.dev,
+Random Nerd Tutorials and atomic14.com via `tools/make_board_pictures.py`; they belong to their owners.
 
 ## 📶 Wi-Fi from a Mac
 

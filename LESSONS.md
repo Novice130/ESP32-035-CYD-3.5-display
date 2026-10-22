@@ -107,11 +107,12 @@ Newest first. Add to it whenever something costs more than a few minutes.
   because some browsers only ask for that). Also check the tab isn't an old `localhost` copy.
 
 ### Board pictures
-- The picker shows drawings from `examples/screen-mirror/tools/make_board_pictures.py`, not
-  seller photos (those are copyrighted). They show what a child can check: screen size (same
-  scale for all), USB sockets, "7789" sticker, "GUITION" print. Online sources didn't confirm
-  PCB colours for every model (the Guition one is drawn dark). Real photos taken by us can
-  replace `docs/boards/<id>.png` with the same names.
+- The picker uses **real product photos** (the owner's choice, accepting they're the sellers'
+  photos): espboards.dev (3.5", 3.2", 2.4"), Random Nerd Tutorials (2.8"), atomic14.com
+  (Guition). `tools/make_board_pictures.py` downloads, trims and resizes them, adds a badge on
+  the two 2.8" variants that look identical from the front, and builds the README chart.
+- An earlier version used drawings; the user wanted real boards. The Guition board is yellow,
+  not dark as first drawn: don't guess board looks, check a photo.
 
 ### Speed expectations (so nobody promises 30 fps over Wi-Fi again)
 - USB at 2 Mbaud ≈ 200 KB/s: ~29 fps only while frames stay under ~7 KB (Smooth mode,
