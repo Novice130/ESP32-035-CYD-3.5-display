@@ -31,6 +31,8 @@ The page has three big numbered steps:
 1. **Plug the board into the computer** with the USB cable.
 2. **Step 1 – Install** *(only the first time)*: click **Install Screen Mirror**, choose your board
    from the list (its name often has *USB*, *CH340* or *serial* in it), then click **Install**.
+   If it offers to **erase** the board, leave that box empty: then a board that already has
+   Wi-Fi set up keeps it.
    Wait about a minute and don't unplug it. When it's done, close the little installer window.
    The board now says **Screen mirror**.
 3. **Step 2 – Connect**: click **Connect with cable** and choose your board again.

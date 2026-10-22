@@ -127,6 +127,8 @@
         <h3 style="margin:0 0 4px">📶 Set up Wi-Fi <span class="small">(optional, then you won't need the cable)</span></h3>
         <p class="small">Use your home Wi-Fi (2.4 GHz). The name and password go through the cable into the board only.
           Many school networks block this, so the cable is the way to go there.</p>
+        <button id="changeWifi" class="secondary" hidden>Change Wi-Fi</button>
+        <div id="wifiFields">
         <label class="field" for="ssid">Wi-Fi name</label>
         <input type="text" id="ssid" autocomplete="off" spellcheck="false">
         <label class="field" for="pass">Wi-Fi password</label>
@@ -136,6 +138,7 @@
           e.g. cyd2 if your class has several boards)</span></label>
         <input type="text" id="boardName" value="cyd" spellcheck="false">
         <button id="saveWifi">Save Wi-Fi to the board</button>
+        </div>
         <div><span class="status" id="wifiStatus"><span class="dot"></span><span></span></span></div>
       </div>
     </div>
@@ -442,8 +445,15 @@ function lostBoard(why) {
 }
 
 // --- Wi-Fi setup (over the cable) ---------------------------------------------------------------
+// Once the board has Wi-Fi saved, hide the form (it can't show the saved password, so empty
+// fields looked like the settings were gone) and offer "Change Wi-Fi" instead.
 function showWifi(st) {
-  if (st.state === 2) {
+  const saved = st.state !== 0;
+  $("wifiFields").hidden = saved;
+  $("changeWifi").hidden = !saved;
+  if (st.state === 3) {
+    setStatus("wifiStatus", `Wi-Fi is saved on the board (${st.name}.local). It's switched off while the cable is in use and comes back about 15 s after you disconnect.`, "ok");
+  } else if (st.state === 2) {
     setStatus("wifiStatus", `Wi-Fi is ready! Next time, connect over Wi-Fi to: ${st.name}.local (or ${st.ip})`, "ok");
     $("address").value = st.name + ".local";
     try { localStorage.setItem("cydAddress", st.name + ".local"); } catch {}
@@ -454,6 +464,8 @@ function showWifi(st) {
 async function refreshWifiStatus() {
   try { showWifi(await askStatus(header("S"))); } catch {}
 }
+
+$("changeWifi").onclick = () => { $("wifiFields").hidden = false; $("changeWifi").hidden = true; };
 
 $("showPass").onchange = () => ($("pass").type = $("showPass").checked ? "text" : "password");
 

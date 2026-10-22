@@ -84,7 +84,7 @@ enum { EV_CONNECTED = 10, EV_WAITING = 11, EV_WIFI = 12 };
 //   'Q' the sender stopped.
 //   'W' (USB) save Wi-Fi: len bytes = u8 n + name of the network, u8 n + password, u8 n + board name.
 //   'U' (USB) about to stream: pauses Wi-Fi now (see wifiPause), acked once it's off.
-//   'S' (USB) Wi-Fi status: the reply is "CYMs" + u8 state (0 not set up, 1 joining, 2 joined)
+//   'S' (USB) Wi-Fi status: the reply is "CYMs" + u8 state (0 not set up, 1 joining, 2 joined, 3 paused)
 //       + u8 n + board name + u8 n + IP address. 'W' gets the same reply instead of 'K'.
 struct __attribute__((packed)) FrameHeader {
     uint8_t tag;
@@ -142,7 +142,8 @@ static void pauseWifi() {
     LOG("[WiFi] paused while the USB cable is in use\n");
 }
 
-static uint8_t wifiState() { return !wifiSsid[0] ? 0 : WiFi.status() == WL_CONNECTED ? 2 : 1; }
+// 0 not set up, 1 joining, 2 joined, 3 set up but switched off while the cable is in use
+static uint8_t wifiState() { return !wifiSsid[0] ? 0 : wifiPaused ? 3 : WiFi.status() == WL_CONNECTED ? 2 : 1; }
 
 // -----------------------------------------------------------------------------
 // SCREENS
