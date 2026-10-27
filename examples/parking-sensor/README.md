@@ -1,6 +1,6 @@
 # 🚗 Parking Sensor (ultrasonic distance over ESP-NOW)
 
-<img src="docs/screens.png" alt="Parking sensor screens: no signal, nothing in range, 142 cm clear, 73 cm slow, 34 cm close, 9 cm stop" width="100%">
+<img src="docs/overview.png" alt="How it works: the ultrasonic sensor on an ESP32 measures the distance to a car and sends it by ESP-NOW radio to the CYD screen, which is plugged into a computer" width="100%">
 
 A second, plain ESP32 reads an **HC-SR04 ultrasonic sensor** and sends the distance by radio to this
 board. The CYD shows it like a car's parking sensor: a big number, a coloured zone, a bar that fills
@@ -21,7 +21,11 @@ up as something gets closer, the RGB LED in the zone colour, and beeps that spee
   3. Plug in the CYD and click **Project Tasks → env:parking_sensor → Upload**.
   4. Power both. Within a second the screen leaves "NO SIGNAL" and shows the distance.
 
+<img src="docs/screens.png" alt="Parking sensor screens: no signal, nothing in range, 142 cm clear, 73 cm slow, 34 cm close, 9 cm stop" width="100%">
+
 ## 🔌 Wiring (sensor → ESP32 dev board)
+
+<img src="docs/wiring.png" alt="Wiring diagram: HC-SR04 VCC to VIN, TRIG to D15, ECHO through a 1 kilo-ohm resistor to D2 with a 2 kilo-ohm resistor from D2 to GND, GND to GND" width="100%">
 
 | HC-SR04 | ESP32 dev board | Notes |
 | :--- | :--- | :--- |
@@ -71,6 +75,8 @@ With both boards plugged in, PlatformIO can't guess which is which, so pass `--u
 
 The screenshots come from the desktop emulator: `tools/emu_feed.cpp` plays the sender's part
 (no signal, then an object coming closer) so `tools/cyd-emu/shoot.sh` can capture every zone.
+The overview and wiring pictures are drawn by `tools/make_diagrams.py` (Python + Pillow), so the pin
+names are exact; edit it and re-run to change them.
 
 ## Serial output
 
