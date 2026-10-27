@@ -1,7 +1,9 @@
 // Parking sensor, display side: CYD 3.5" (ST7796 480x320, XPT2046 touch).
 // Receives the distance over ESP-NOW and shows it as a big number, a zone label and
 // a bar. The RGB LED shows the zone, the speaker beeps faster as things get closer.
-// Tap the screen to mute / unmute.
+// The sender's PIR sensor lights a MOTION badge; with no motion and nothing within
+// 1 m for a minute the screen goes to sleep, and wakes on motion, something close
+// or a tap. Tap the screen to mute / unmute.
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -22,6 +24,7 @@
 #define BAR_RANGE_CM    200   // bar is empty at 200 cm and beyond, full at 0
 #define BEEP_HZ         2400
 #define BEEP_MS         50
+#define SLEEP_AFTER_MS  60000  // no motion, nothing within 1 m, no tap = backlight off
 
 TFT_eSPI tft;
 SPIClass touchSPI = SPIClass(HSPI);
@@ -29,6 +32,7 @@ XPT2046_Touchscreen ts(XPT2046_CS);
 
 // Written by the ESP-NOW callback (Wi-Fi task), read by loop()
 static volatile int16_t rxMm = -1;
+static volatile bool rxMotion = false;
 static volatile unsigned long rxAt = 0;
 static volatile bool rxAny = false;
 
@@ -61,6 +65,7 @@ void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     memcpy(&p, data, sizeof(p));
     if (p.magic != PACKET_MAGIC) return;
     rxMm = p.mm;
+    rxMotion = p.motion;
     rxAt = millis();
     rxAny = true;
 }
@@ -88,6 +93,14 @@ void drawMute() {
     tft.setTextPadding(tft.textWidth("SOUND OFF", 2));
     tft.drawString(muted ? "SOUND OFF" : "SOUND ON", 462, 20, 2);
     tft.setTextPadding(0);
+}
+
+void drawMotion(bool on) {
+    tft.fillRoundRect(170, 12, 140, 30, 15, on ? TFT_MAGENTA : TFT_BLACK);
+    if (!on) tft.drawRoundRect(170, 12, 140, 30, 15, TFT_DARKGREY);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(on ? TFT_WHITE : TFT_DARKGREY);
+    tft.drawString(on ? "MOTION" : "no motion", 240, 28, 2);
 }
 
 void drawNumber(int cm, uint16_t color) {
@@ -156,6 +169,7 @@ void setup() {
 
     drawStatic();
     drawMute();
+    drawMotion(false);
 
     WiFi.mode(WIFI_STA);  // ESP-NOW only, never joins a network
     if (esp_now_init() != ESP_OK) Serial.println("[ESPNOW] init failed");
@@ -167,24 +181,40 @@ void loop() {
     static int shownCm = -2;
     static Zone shownZone = (Zone)-1;
     static int shownBar = -1;
-    static unsigned long nextBeep = 0, nextLog = 0;
+    static int shownMotion = -1;
+    static bool awake = true;
+    static unsigned long nextBeep = 0, nextLog = 0, lastActive = 0;
     unsigned long now = millis();
-
-    if (tapped()) {
-        muted = !muted;
-        drawMute();
-    }
 
     bool linked = rxAny && now - rxAt < LINK_TIMEOUT_MS;
     int16_t mm = rxMm;
+    bool motion = linked && rxMotion;
     Zone z = zoneFor(linked, mm);
     int cm = (linked && mm >= 0) ? (mm + 5) / 10 : -1;
     int bar = (cm < 0 || cm >= BAR_RANGE_CM) ? 0 : 440 - cm * 440 / BAR_RANGE_CM;
 
+    bool tap = tapped();
+    if (tap && awake) {  // a tap that wakes the screen doesn't also toggle mute
+        muted = !muted;
+        drawMute();
+    }
+    if (tap || motion || (cm >= 0 && cm < 100)) lastActive = now;
+    bool wantAwake = now - lastActive < SLEEP_AFTER_MS;
+    if (wantAwake != awake) {
+        awake = wantAwake;
+        digitalWrite(CYD_BACKLIGHT, awake ? HIGH : LOW);
+        if (awake) setLed(ZONES[z].r, ZONES[z].g, ZONES[z].b);
+        else setLed(0, 0, 0);
+        Serial.println(awake ? "[PARK] wake" : "[PARK] sleep");
+    }
+
+    if (motion != shownMotion) drawMotion(motion);
+    shownMotion = motion;
+
     if (cm != shownCm || z != shownZone) drawNumber(cm, ZONES[z].color);
     if (z != shownZone) {
         drawZone(z);
-        setLed(ZONES[z].r, ZONES[z].g, ZONES[z].b);
+        if (awake) setLed(ZONES[z].r, ZONES[z].g, ZONES[z].b);
     }
     if (bar != shownBar || z != shownZone) drawBar(bar, ZONES[z].color);
     shownCm = cm;
@@ -192,14 +222,14 @@ void loop() {
     shownBar = bar;
 
     // Beep every (cm x 8) ms below 1 m: ~800 ms at 99 cm, nearly solid under 10 cm
-    if (!muted && cm >= 0 && cm < 100 && now >= nextBeep) {
+    if (awake && !muted && cm >= 0 && cm < 100 && now >= nextBeep) {
         tone(CYD_SPEAKER_PIN, BEEP_HZ, BEEP_MS);
         nextBeep = now + max(cm * 8, BEEP_MS + 20);
     }
 
     if (now >= nextLog) {
         nextLog = now + 1000;
-        if (linked) Serial.printf("[PARK] %d cm (%s)\n", cm, ZONES[z].label);
+        if (linked) Serial.printf("[PARK] %d cm (%s)%s\n", cm, ZONES[z].label, motion ? ", motion" : "");
         else Serial.println("[PARK] no signal from sender");
     }
     delay(10);

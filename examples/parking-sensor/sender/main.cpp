@@ -1,6 +1,7 @@
-// Parking sensor, sender side: plain ESP32 dev board + HC-SR04 ultrasonic sensor.
-// Pings about 16 times a second, takes the median of the last 3 readings and
-// broadcasts it over ESP-NOW. Every reading is also printed on the serial monitor.
+// Parking sensor, sender side: plain ESP32 dev board + HC-SR04 ultrasonic sensor
+// + PIR motion sensor. Pings about 16 times a second, takes the median of the last
+// 3 readings and broadcasts it with the PIR state over ESP-NOW. Every reading is
+// also printed on the serial monitor.
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -9,6 +10,7 @@
 
 #define TRIG_PIN 15
 #define ECHO_PIN 2             // also the on-board blue LED: it flickers with each echo
+#define PIR_PIN 4              // PIR OUT: HIGH while it sees movement
 #define ECHO_TIMEOUT_US 25000  // ~4.3 m round trip; longer = nothing in range
 #define PING_INTERVAL_MS 60    // HC-SR04 needs ~60 ms for old echoes to die out
 
@@ -23,7 +25,7 @@ int16_t pingMm() {
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
     unsigned long us = pulseIn(ECHO_PIN, HIGH, ECHO_TIMEOUT_US);
-    if (us == 0) return -1;
+    if (us < 116) return -1;  // timeout, or under 2 cm (too close to measure / sensor unplugged)
     return (int16_t)(us * 10 / 58);  // sound: 58 us per cm, there and back
 }
 
@@ -37,6 +39,7 @@ void setup() {
     Serial.begin(115200);
     pinMode(TRIG_PIN, OUTPUT);
     pinMode(ECHO_PIN, INPUT);
+    pinMode(PIR_PIN, INPUT_PULLDOWN);  // reads "no motion" if the PIR is unplugged
 
     WiFi.mode(WIFI_STA);  // ESP-NOW only, never joins a network
     if (esp_now_init() != ESP_OK) {
@@ -48,7 +51,7 @@ void setup() {
     peer.channel = 0;
     peer.encrypt = false;
     esp_now_add_peer(&peer);
-    Serial.printf("[SONAR] ready, TRIG=%d ECHO=%d, MAC %s\n", TRIG_PIN, ECHO_PIN,
+    Serial.printf("[SONAR] ready, TRIG=%d ECHO=%d PIR=%d, MAC %s\n", TRIG_PIN, ECHO_PIN, PIR_PIN,
                   WiFi.macAddress().c_str());
 }
 
@@ -60,9 +63,12 @@ void loop() {
     history[seq % 3] = pingMm();
     int16_t mm = median3(history[0], history[1], history[2]);
 
-    DistancePacket p = {PACKET_MAGIC, seq++, mm};
+    uint8_t motion = digitalRead(PIR_PIN) == HIGH;
+
+    DistancePacket p = {PACKET_MAGIC, seq++, mm, motion};
     esp_now_send(BROADCAST, (const uint8_t *)&p, sizeof(p));
 
-    if (mm < 0) Serial.println("[SONAR] no echo");
-    else Serial.printf("[SONAR] %.1f cm\n", mm / 10.0f);
+    const char *pir = motion ? "  [PIR] motion" : "";
+    if (mm < 0) Serial.printf("[SONAR] no echo%s\n", pir);
+    else Serial.printf("[SONAR] %.1f cm%s\n", mm / 10.0f, pir);
 }

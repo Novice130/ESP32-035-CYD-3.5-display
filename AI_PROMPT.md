@@ -75,7 +75,7 @@ docs/                the website (GitHub Pages): Screen Mirror installer + USB s
 | `examples/video-clip/` | `video_clip` | Looping video with sound from a flash partition (JPEG frames + 8-bit DAC audio), or streamed over Wi-Fi; custom `partitions.csv` |
 | `examples/cloud-game/` | `cloud_game` | Thin client: a Flappy tribute runs on a server (Sipeed NanoKVM) and streams frames over Wi-Fi; LDR or tap = flap |
 | `examples/screen-mirror/` | `screen_mirror` (`screen_mirror_web` = USB-only build for the website) | Mirror a computer screen to the board: website in `docs/` (ESP Web Tools install + Web Serial over USB, https://robo.learnnovice.com/) or Wi-Fi from a Mac with tools/mirror.sh |
-| `examples/parking-sensor/` | `parking_sensor` + `parking_sensor_sender` (plain ESP32 dev board) | HC-SR04 on a second ESP32 (TRIG 15, ECHO 2) sends distance over ESP-NOW broadcast; CYD shows number, zone, bar, LED and beeps; tap = mute |
+| `examples/parking-sensor/` | `parking_sensor` + `parking_sensor_sender` (plain ESP32 dev board) | HC-SR04 (TRIG 15, ECHO 2) + HC-SR501 PIR (OUT 4) on a second ESP32 send distance + motion over ESP-NOW broadcast; CYD shows number, zone, bar, LED, beeps, MOTION badge, sleeps after 60 s idle; tap = mute |
 | `examples/manga-aura/` | `manga_aura` | Anime eyes + speedlines animation |
 | `examples/neo-tokyo-synthwave/` | `neo_tokyo_synthwave` | Synthwave sunset with a scrolling neon grid |
 | `examples/rasengan-vortex/` | `rasengan_vortex` | Swirling particle energy ball |

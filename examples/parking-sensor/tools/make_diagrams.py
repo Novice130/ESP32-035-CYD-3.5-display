@@ -19,7 +19,7 @@ S = 2  # supersample, scaled down at the end for smooth edges
 BG = "#F7F3EA"
 INK = "#1F2933"
 MUTED = "#6B7280"
-RED, ORANGE, GREEN, BLACK = "#E53935", "#F28C28", "#2E9E48", "#222222"
+RED, ORANGE, GREEN, BLACK, PURPLE = "#E53935", "#F28C28", "#2E9E48", "#222222", "#B23AC9"
 PCB_ESP, PCB_SONAR = "#1D3557", "#2F6DB5"
 SILVER, GOLD = "#C9CED6", "#D4A72C"
 
@@ -81,7 +81,7 @@ class Canvas:
 
 
 def wire(c, pts, color, width=7, hops=()):
-    """Orthogonal wire with rounded corners; hops = x positions on horizontal runs to jump over."""
+    """Orthogonal wire with rounded corners; hops = (x, y) points on its horizontal runs to jump over."""
     r = 16
     out = [pts[0]]
     for i in range(1, len(pts) - 1):
@@ -98,10 +98,10 @@ def wire(c, pts, color, width=7, hops=()):
         out.append(p1)
     out.append(pts[-1])
     # hops: replace a straight horizontal stretch around x=h with a half circle bump
-    for hx in hops:
+    for hx, hy in hops:
         for i in range(len(out) - 1):
             (x0, y0), (x1, y1) = out[i], out[i + 1]
-            if abs(y0 - y1) < 0.1 and min(x0, x1) < hx - 14 and max(x0, x1) > hx + 14:
+            if abs(y0 - y1) < 0.1 and abs(y0 - hy) < 0.1 and min(x0, x1) < hx - 14 and max(x0, x1) > hx + 14:
                 d = 1 if x1 > x0 else -1
                 bump = [(hx - d * 14 * math.cos(math.radians(a)), y0 - 14 * math.sin(math.radians(a)))
                         for a in range(0, 181, 15)]
@@ -168,6 +168,34 @@ def esp32_devkit(c, x0, y0, pitch=36, used=()):
     return pins, y1
 
 
+def hcsr501_back(c, x0, y0):
+    """HC-SR501 PIR seen from the back (parts side, dome underneath), turned so the pins point
+    right: GND, OUT, VCC from top to bottom. Returns {name: (x_pin_tip, y)}."""
+    w, h = 250, 170
+    c.rect(x0, y0, x0 + w, y0 + h, fill="#1E8449", outline="#145A32", width=3, r=8)
+    c.rect(x0 + 80, y0 + 60, x0 + 170, y0 + 100, fill="#1B1B1B", r=3)  # BISS0001 chip
+    for i in range(8):
+        lx = x0 + 86 + i * 11
+        c.rect(lx, y0 + 52, lx + 4, y0 + 60, fill="#BBB")
+        c.rect(lx, y0 + 100, lx + 4, y0 + 108, fill="#BBB")
+    c.text((x0 + 125, y0 + 80), "BISS0001", 11, "#AAA", True, "mm")
+    for ky in (y0 + 70, y0 + 128):  # the two orange knobs
+        c.rect(x0 + 8, ky - 18, x0 + 40, ky + 18, fill="#2B2B2B", r=3)
+        c.circle(x0 + 30, ky, 13, fill="#F5A623", outline="#9C6A12", width=2)
+        c.line([(x0 + 23, ky), (x0 + 37, ky)], fill="#6B4A0E", width=3)
+    c.rect(x0 + 12, y0 + 8, x0 + 52, y0 + 26, fill="#F2C200", outline="#8A6D00", width=2, r=3)  # H/L jumper
+    pins = {}
+    for i, n in enumerate(["GND", "OUT", "VCC"]):
+        py = y0 + 45 + i * 40
+        c.rect(x0 + w - 14, py - 9, x0 + w + 4, py + 9, fill="#111")
+        c.rect(x0 + w + 4, py - 4, x0 + w + 30, py + 4, fill=GOLD, outline="#7A5C12", width=1)
+        c.text((x0 + w - 22, py), n, 14, "white", True, "rm")
+        pins[n] = (x0 + w + 30, py)
+    c.text((x0, y0 + h + 12), "PIR HC-SR501, back view", 15, INK, True)
+    c.text((x0, y0 + h + 32), "(white dome on the other side)", 14, MUTED)
+    return pins
+
+
 def jumper_end(c, x, y, color):
     """Female jumper housing sitting on a pin."""
     c.rect(x - 10, y - 13, x + 10, y + 13, fill=color, outline="#111", width=2, r=3)
@@ -205,12 +233,14 @@ def hcsr04(c, x0, y0, w=360, front_labels=True):
 # ---------------------------------------------------------------------------------------------
 def make_wiring():
     c = Canvas(1400, 1150)
-    c.text((40, 34), "Wiring: ultrasonic sensor to ESP32", 34, INK, True)
-    c.text((40, 84), "Unplug the USB cable while you wire. Match the pin NAMES and the wire colours.", 19, MUTED)
+    c.text((40, 24), "Wiring: ultrasonic + PIR sensors to ESP32", 34, INK, True)
+    c.text((40, 72), "Unplug the USB cable while you wire. Match the pin NAMES and the wire colours.", 19, MUTED)
 
-    used = {("L", "VIN"), ("R", "D2"), ("R", "D15"), ("R", "GND")}
+    used = {("L", "VIN"), ("R", "D2"), ("R", "D4"), ("R", "D15"), ("R", "GND")}
     esp, esp_bottom = esp32_devkit(c, 470, 330, used=used)
     sonar = hcsr04(c, 900, 120, front_labels=False)
+    pir = hcsr501_back(c, 40, 125)
+    d4 = esp[("R", "D4")]
 
     vin, gnd, d2, d15 = esp[("L", "VIN")], esp[("R", "GND")], esp[("R", "D2")], esp[("R", "D15")]
     sv, st, se, sg = sonar["VCC"], sonar["TRIG"], sonar["ECHO"], sonar["GND"]
@@ -220,26 +250,33 @@ def make_wiring():
     gnd_lane = 1240
     j2 = (gnd_lane, j1[1])
 
-    wire(c, [sv, (sv[0], 300), (420, 300), (420, vin[1]), vin], RED)                          # VCC -> VIN
+    out_lane = 745
+    wire(c, [sv, (sv[0], 300), (420, 300), (420, vin[1]), vin], RED, hops=((out_lane, 300),))  # VCC -> VIN
     wire(c, [st, (st[0], d15[1]), d15], ORANGE)                                               # TRIG -> D15
     wire(c, [sg, (sg[0], 318), (gnd_lane, 318), (gnd_lane, gnd[1]), gnd], BLACK)              # GND -> GND
     wire(c, [se, j1], GREEN)                                                                   # ECHO -> 1k
-    wire(c, [j1, (j1[0], d2[1]), d2], GREEN, hops=(st[0],))                                    # 1k -> D2
+    wire(c, [j1, (j1[0], d2[1]), d2], GREEN, hops=((st[0], d2[1]),))                           # 1k -> D2
     wire(c, [j1, j2], "#555555", width=6)                                                      # J1 -> 2k -> GND
     resistor(c, se[0], 380, True, ["#7B4A1E", "#111", RED, GOLD], "1 kΩ")
     resistor(c, (j1[0] + gnd_lane) / 2 + 6, j1[1], False, [RED, "#111", RED, GOLD], "2 kΩ")
-    for j in (j1, j2):
+    # PIR: VCC joins the VIN wire, OUT over the top to D4, GND around the sensor to the GND wire
+    pv, po, pg = pir["VCC"], pir["OUT"], pir["GND"]
+    j3, j4 = (420, 330), (gnd_lane, 560)
+    wire(c, [pv, (j3[0], pv[1]), j3], RED)
+    wire(c, [po, (out_lane, po[1]), (out_lane, d4[1]), d4], PURPLE)
+    wire(c, [pg, (345, pg[1]), (345, 108), (1300, 108), (1300, j4[1]), j4], BLACK)
+    for j in (j1, j2, j3, j4):
         c.circle(*j, 9, fill="#111", outline="white", width=2)
-    for p, col in ((vin, RED), (d15, ORANGE), (d2, GREEN), (gnd, BLACK)):
+    for p, col in ((vin, RED), (d15, ORANGE), (d2, GREEN), (gnd, BLACK), (d4, PURPLE)):
         jumper_end(c, *p, col)
+    c.pill(out_lane + 44, d4[1] - 24, "D4", PURPLE)
 
     c.pill(st[0] - 52, d15[1] - 22, "D15", ORANGE)
     c.pill(st[0] - 140, d2[1] - 22, "D2", GREEN)
     c.pill(gnd_lane - 70, gnd[1] - 22, "GND", BLACK)
     c.pill(370, vin[1], "VIN", RED)
-    c.text((1256, j1[1] + 26), "dots = joined", 15, MUTED)
-    c.text((1256, j1[1] + 46), "(same breadboard", 15, MUTED)
-    c.text((1256, j1[1] + 66), "row, or twisted)", 15, MUTED)
+    for i, line in enumerate(["dots = joined", "(same breadboard", "row, or twisted)"]):
+        c.text(((j1[0] + gnd_lane) / 2, j1[1] + 32 + i * 19), line, 14, MUTED, False, "ma")
 
     # USB cable
     ux = 470 + 130
@@ -247,30 +284,39 @@ def make_wiring():
     c.text((ux + 214, esp_bottom + 70), "USB: computer or phone charger", 18, MUTED, False, "lm")
 
     # connection table
-    x, y = 40, 380
-    c.rect(x - 14, y - 46, x + 356, y + 380, fill="white", outline="#E2DCCD", width=2, r=14)
-    c.text((x, y - 30), "Connections", 22, INK, True)
-    rows = [
-        (RED, "VCC", "VIN", "5 V power"),
-        (ORANGE, "TRIG", "D15", "start a ping"),
-        (GREEN, "ECHO", "D2", "through 1 kΩ"),
-        (BLACK, "GND", "GND", "ground"),
+    x, y = 40, 400
+    c.rect(x - 14, y - 20, x + 356, y + 462, fill="white", outline="#E2DCCD", width=2, r=14)
+    c.text((x, y - 4), "Connections", 22, INK, True)
+    sections = [
+        ("Ultrasonic HC-SR04", 34, [
+            (RED, "VCC", "VIN", "5 V power"),
+            (ORANGE, "TRIG", "D15", "start a ping"),
+            (GREEN, "ECHO", "D2", "through 1 kΩ"),
+            (BLACK, "GND", "GND", "ground"),
+        ]),
+        ("PIR HC-SR501", 206, [
+            (RED, "VCC", "VIN", "shared, 5 V"),
+            (PURPLE, "OUT", "D4", "HIGH = motion"),
+            (BLACK, "GND", "GND", "shared"),
+        ]),
     ]
-    for i, (col, a, b, note) in enumerate(rows):
-        yy = y + 22 + i * 54
-        c.rect(x, yy - 6, x + 30, yy + 6, fill=col, r=6)
-        c.text((x + 44, yy), a, 19, INK, True, "lm")
-        c.text((x + 120, yy), "→", 19, MUTED, False, "lm")
-        c.text((x + 150, yy), b, 19, INK, True, "lm")
-        c.text((x + 210, yy), note, 15, MUTED, False, "lm")
-    yy = y + 250
+    for title, top, rows in sections:
+        c.text((x, y + top), title, 15, MUTED, True)
+        for i, (col, a, b, note) in enumerate(rows):
+            yy = y + top + 38 + i * 36
+            c.rect(x, yy - 6, x + 30, yy + 6, fill=col, r=6)
+            c.text((x + 44, yy), a, 19, INK, True, "lm")
+            c.text((x + 120, yy), "→", 19, MUTED, False, "lm")
+            c.text((x + 150, yy), b, 19, INK, True, "lm")
+            c.text((x + 210, yy), note, 15, MUTED, False, "lm")
+    yy = y + 346
     c.text((x, yy), "Voltage divider:", 17, INK, True)
     c.text((x, yy + 26), "1 kΩ  ECHO → D2", 16, INK)
     c.text((x, yy + 50), "2 kΩ  D2 side → GND", 16, INK)
     c.text((x, yy + 78), "Bands: 1 kΩ brown-black-red,", 14, MUTED)
     c.text((x, yy + 98), "2 kΩ red-black-red.", 14, MUTED)
 
-    c.text((40, 1110), "Other ESP32 boards put pins in different places: find D15, D2, GND and VIN by the names printed on yours.",
+    c.text((40, 1110), "Other ESP32 boards put pins in different places: find D15, D2, D4, GND and VIN by the names printed on yours.",
            16, MUTED)
     c.save(os.path.join(DOCS, "wiring.png"))
 

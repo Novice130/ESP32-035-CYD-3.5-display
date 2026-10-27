@@ -7,5 +7,6 @@
 struct __attribute__((packed)) DistancePacket {
     uint32_t magic;
     uint32_t seq;
-    int16_t  mm;  // distance in millimetres, -1 = no echo (nothing in range)
+    int16_t  mm;      // distance in millimetres, -1 = no echo (nothing in range)
+    uint8_t  motion;  // 1 = the PIR sensor sees someone moving
 };
