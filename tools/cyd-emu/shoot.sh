@@ -38,8 +38,12 @@ DEFS=(
 )
 FLAGS=(-std=c++17 -O1 -w -I"$ROOT/tools/cyd-emu/stubs" -I"$WORK/include" -I"$TFT")
 
+# optional example hook: tools/emu_feed.cpp defines emu_tick() (e.g. scripted ESP-NOW packets)
+EXTRA=()
+[ -f "$EX/tools/emu_feed.cpp" ] && EXTRA=("$EX/tools/emu_feed.cpp")
+
 clang++ "${FLAGS[@]}" "${DEFS[@]}" \
-  "$ROOT/tools/cyd-emu/emu.cpp" "$WORK/TFT_eSPI_host.cpp" "$EX/src/main.cpp" -o "$WORK/emu"
+  "$ROOT/tools/cyd-emu/emu.cpp" "$WORK/TFT_eSPI_host.cpp" "$EX/src/main.cpp" ${EXTRA[@]+"${EXTRA[@]}"} -o "$WORK/emu"
 
 mkdir -p "$(dirname "$OUT")"
 "$WORK/emu" "$WORK/shot" "$SHOTS" "$@" 2>"$WORK/log.txt" || { tail -20 "$WORK/log.txt" >&2; exit 1; }

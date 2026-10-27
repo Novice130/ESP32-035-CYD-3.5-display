@@ -18,6 +18,8 @@ tools/cyd-emu/shoot.sh examples/mario-arcade out/mario 5000 2000 2600
 Notes:
 - Time is simulated, so a 10 s capture finishes in a moment and gives the same result every run.
 - WiFi always reports offline; background FreeRTOS tasks are not run.
+- ESP-NOW sends go nowhere. To fake received packets, add `examples/<name>/tools/emu_feed.cpp`
+  with an `emu_tick()` that calls `emu_espnow_receive()` (see `examples/parking-sensor`).
 - The light sensor reads "bright room"; sound is ignored.
 - A private `include/config.h` is never used (the build copies the example's headers without it),
   so real WiFi passwords or IP addresses can't end up in a screenshot.

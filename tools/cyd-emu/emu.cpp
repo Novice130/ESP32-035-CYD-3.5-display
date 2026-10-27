@@ -45,6 +45,9 @@ int analogRead(uint8_t) { return 2200; }  // LDR: bright room
 void tone(uint8_t, unsigned int, unsigned long) {}
 void noTone(uint8_t) {}
 
+// optional per-example hook (examples/<name>/tools/emu_feed.cpp), e.g. fake ESP-NOW packets
+__attribute__((weak)) void emu_tick() {}
+
 // ------------------------------------------------------------------ touch script
 static std::vector<unsigned long> taps;
 bool emu_touch_active() {
@@ -143,6 +146,7 @@ int main(int argc, char** argv) {
     size_t next = 0;
     while (next < shots.size()) {
         long long before = pixelsWritten;
+        emu_tick();
         loop();
         chargeFrameTime(pixelsWritten - before);
         while (next < shots.size() && millis() >= shots[next]) {

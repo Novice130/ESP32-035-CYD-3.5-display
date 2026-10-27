@@ -24,6 +24,7 @@ class WiFiClass {
     IPAddress gatewayIP() { return IPAddress(); }
     int RSSI() { return 0; }
     String SSID() { return String(""); }
+    String macAddress() { return String("24:6F:28:00:00:00"); }
 };
 extern WiFiClass WiFi;
 
