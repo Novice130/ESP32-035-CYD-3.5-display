@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Draw the parking-sensor README pictures: docs/overview.png and docs/wiring.png.
+"""Draw the parking-sensor README pictures: docs/wiring.png (and, on request, an overview).
 
 Drawn from code (not an image generator) so every pin name and wire is exact.
 Pin layout = the common 30-pin "ESP32 DEVKIT V1" (DOIT) board, USB at the bottom.
 
-    python3 examples/parking-sensor/tools/make_diagrams.py
+    python3 examples/parking-sensor/tools/make_diagrams.py            # docs/wiring.png
+    python3 examples/parking-sensor/tools/make_diagrams.py overview   # also docs/overview-drawn.png
 """
+import sys
 import math
 import os
 from PIL import Image, ImageDraw, ImageFont
@@ -370,9 +372,10 @@ def make_overview():
     badge(c, 40, 778, 1, "Sensor pings", ["sends a sound you can't hear", "and times the echo"])
     badge(c, 500, 778, 2, "ESP32 sends", ["turns the time into cm", "and sends it by ESP-NOW radio"])
     badge(c, 960, 778, 3, "CYD shows", ["big number, colours, LED,", "beeps faster when close"])
-    c.save(os.path.join(DOCS, "overview.png"))
+    c.save(os.path.join(DOCS, "overview-drawn.png"))
 
 
 if __name__ == "__main__":
     make_wiring()
-    make_overview()
+    if "overview" in sys.argv[1:]:
+        make_overview()

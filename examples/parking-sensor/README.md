@@ -1,6 +1,6 @@
 # 🚗 Parking Sensor (ultrasonic distance over ESP-NOW)
 
-<img src="docs/overview.png" alt="How it works: the ultrasonic sensor on an ESP32 measures the distance to a car and sends it by ESP-NOW radio to the CYD screen, which is plugged into a computer" width="100%">
+<img src="docs/overview.jpg" alt="How it works: 1 the ultrasonic sensor on an ESP32 pings a toy car, 2 the ESP32 sends 34 cm by ESP-NOW radio, 3 the CYD screen plugged into a laptop shows 34 cm CLOSE" width="100%">
 
 A second, plain ESP32 reads an **HC-SR04 ultrasonic sensor** and sends the distance by radio to this
 board. The CYD shows it like a car's parking sensor: a big number, a coloured zone, a bar that fills
@@ -75,8 +75,9 @@ With both boards plugged in, PlatformIO can't guess which is which, so pass `--u
 
 The screenshots come from the desktop emulator: `tools/emu_feed.cpp` plays the sender's part
 (no signal, then an object coming closer) so `tools/cyd-emu/shoot.sh` can capture every zone.
-The overview and wiring pictures are drawn by `tools/make_diagrams.py` (Python + Pillow), so the pin
-names are exact; edit it and re-run to change them.
+The wiring picture is drawn by `tools/make_diagrams.py` (Python + Pillow), so the pin names are
+exact; edit it and re-run to change it. The cartoon overview (`docs/overview.jpg`) was made with an
+AI image generator; `make_diagrams.py overview` draws an exact version to `docs/overview-drawn.png`.
 
 ## Serial output
 
