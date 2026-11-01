@@ -5,6 +5,29 @@ Newest first. Add to it whenever something costs more than a few minutes.
 
 ---
 
+## CYD Agent (examples/cyd-agent)
+
+### Touch "worked" in logs but the glass is shorted
+- **Symptom:** a no-touch test showed 0 touches, which looked healthy. It proved nothing: CLAUDE.md's
+  `p.z < 3900` filter throws away every reading on this cracked board, real presses included.
+- **Evidence:** the `mario-touch-fix` worktree session (2026-10-17) measured idle z about 4095 at one fixed
+  spot; a press only pulls raw X down (idle 1697..1830, pressed < 1680), and position can't be recovered.
+- **Fix:** copy `touchDown()` from `examples/cyd-agent/src/main.cpp`: learn idle X, press = X drop > 150 for
+  2 readings, whole screen = one button, LDR cover as a backup. Search old sessions and worktrees before
+  building a new diagnostic.
+
+### Mac system numbers looked right but weren't
+- **Apps showed 0 MB:** `/Applications/Xcode.app` here is a symlink to another drive and `du -sk` doesn't
+  follow it. Fix: `os.path.realpath()` first.
+- **RAM read lower than Activity Monitor would:** `psutil` total minus available gave 80 % when app + wired
+  + compressed from `vm_stat` gave 85 %. Fix: use the `vm_stat` sum on a Mac.
+- **Disk on "/" is the wrong volume:** on macOS that's the small system volume. Use `/System/Volumes/Data`.
+- **Temperature:** `psutil.sensors_temperatures` doesn't exist on macOS. On an M4 the IOKit HID `PMU tdie*`
+  sensors work without sudo (44 C idle to 52 C under full load). Some `tdev` sensors read -22, so read only
+  `tdie`. No sensor exposes RAM separately, so don't label it as a RAM temperature.
+
+---
+
 ## Screen mirror (examples/screen-mirror, website in docs/)
 
 ### Wi-Fi picture froze after ~5–10 s, then the board "disconnected"
