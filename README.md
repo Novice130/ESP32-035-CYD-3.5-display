@@ -120,12 +120,14 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
     ├── neo-tokyo-synthwave/       # Standalone 3D Synthwave wireframe grid
     ├── rasengan-vortex/           # Standalone 3D Rasengan particle vortex
     ├── matrix-rain/               # Standalone Digital Katakana matrix rain
+    ├── pomodoro-hourglass/        # Pomodoro timer with seven animated hourglass scenes, quotes & break logic
     └── noc-dashboard/             # Standalone Enterprise NOC telemetry dashboard
 ```
 
 | Project / Environment | PlatformIO Env | Description | Direct Link |
 | :--- | :---: | :--- | :---: |
 | **Hardware Diagnostics** | `[env:cyd]` | Pinout verification, touch test, LDR light sensor, RGB LED cycle, and audio chime. | [`src/main.cpp`](src/main.cpp) |
+| **Pomodoro Hourglass** | `[env:pomodoro_hourglass]` | Focus timer with seven native-resolution hourglass scenes (fine sand, embers, water drops, ink, chemical titration, neon plasma, black hole), rotating quotes and a smart break prompt. Hold the screen or tap the light sensor for the next scene. | [`examples/pomodoro-hourglass/`](examples/pomodoro-hourglass/) |
 | **Super Mario Bros Arcade** | `[env:mario_arcade]` | Mario platformer tribute: 32 levels (8 worlds), power-ups, Goombas / Koopas / Piranhas, flagpole. Plays itself; press JUMP / FIRE / RUN on the right edge to take over. | [`examples/mario-arcade/`](examples/mario-arcade/) |
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Video Clip Player** | `[env:video_clip]` | Plays a looping video clip with sound: JPEG frames zoomed 2x (240x136, 15 fps) or 3x (160x90, for ~2.5 min clips), 8-bit audio through the DAC on GPIO 26. Convert your own video with `tools/make_clip.py`, or stream a whole video over Wi-Fi from a server. 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s. | [`examples/video-clip/`](examples/video-clip/) |
@@ -149,6 +151,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 <tr><td align="center"><a href="examples/video-clip/"><img src="examples/video-clip/docs/screenshot.png" width="380" alt="Video Clip Player (test pattern)"></a><br><b>Video Clip Player (test pattern)</b></td><td align="center"><a href="examples/cloud-game/"><img src="examples/cloud-game/docs/screenshot.png" width="380" alt="Cloud Game: Flappy tribute"></a><br><b>Cloud Game: Flappy tribute (streamed)</b></td></tr>
 <tr><td align="center"><a href="examples/screen-mirror/"><img src="examples/screen-mirror/docs/what-the-board-shows.png" width="380" alt="Screen Mirror: a computer drawing shown on the board"></a><br><b>Screen Mirror (a computer screen, as the board shows it)</b></td><td align="center"><a href="examples/screen-mirror/"><img src="examples/screen-mirror/docs/website-steps.png" width="250" alt="Screen Mirror website"></a><br><b>Screen Mirror website</b></td></tr>
 <tr><td align="center"><a href="examples/parking-sensor/"><img src="examples/parking-sensor/docs/screenshot.png" width="380" alt="Parking Sensor at 34 cm (CLOSE)"></a><br><b>Parking Sensor (ultrasonic + PIR over ESP-NOW)</b></td><td align="center"><a href="examples/cyd-agent/"><img src="examples/cyd-agent/docs/screenshot.png" width="380" alt="CYD Agent: a cute pet in the corner of a live system dashboard"></a><br><b>CYD Agent (cute pet + live system monitor)</b></td></tr>
+<tr><td align="center" colspan="2"><a href="examples/pomodoro-hourglass/"><img src="examples/pomodoro-hourglass/docs/screens.png" width="760" alt="Pomodoro Hourglass"></a><br><b>Pomodoro Hourglass (seven animated scenes, rotating quotes & smart break reminders)</b></td></tr>
 </table>
 
 <sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library. The Video Clip Player shows a frame of its built-in test pattern decoded the way the board draws it; the Cloud Game shows a frame rendered by its server's preview mode; the Parking Sensor gets its readings from a scripted stand-in for the sensor board.</sub>
@@ -206,6 +209,9 @@ pio run -e rasengan_vortex -t upload
 
 # Flash the Matrix Rain:
 pio run -e matrix_rain -t upload
+
+# Flash the Pomodoro Hourglass (seven animated scenes, quotes & break logic):
+pio run -e pomodoro_hourglass -t upload
 
 # Flash the NOC Infrastructure Monitor:
 pio run -e noc_dashboard -t upload

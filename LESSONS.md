@@ -5,6 +5,19 @@ Newest first. Add to it whenever something costs more than a few minutes.
 
 ---
 
+## Pomodoro Hourglass (examples/pomodoro-hourglass)
+
+### Reading art from flash every frame was the real bottleneck
+- **Symptom:** one scene with light drawing took 29.5 ms per frame, right at the 33 ms limit.
+- **Evidence:** the boot log said `mode:DIO, clock div:2`. Each frame reads about 100 KB from flash, and pushed a 71 KB rectangle.
+- **Fix:** `board_build.flash_mode = qio` and `board_build.f_flash = 80000000L`, plus a per-row tile hash so only changed tiles go over SPI: 13.3 ms. Same scene. Booted fine on this board.
+- **Note:** the Mac `bench` is only a rough proxy (25 us there, about 13 ms total on the board). Log frame time from the board.
+
+### Unexplained: extra scene changes in one test run
+- **Symptom:** in one serial test run scenes skipped ahead, as if the sensor or touch had fired. That run did not log `[LDR]`/`[Touch]` lines.
+- **Evidence:** not reproduced in about 3 minutes of logged runs, including idle and the same key sequence. Cause not found.
+- **If it returns:** watch for `[LDR] Tap released` or `[Touch] Long press` in the serial log. A light change or hand near the sensor is the first suspect.
+
 ## CYD Agent (examples/cyd-agent)
 
 ### Touch "worked" in logs but the glass is shorted
