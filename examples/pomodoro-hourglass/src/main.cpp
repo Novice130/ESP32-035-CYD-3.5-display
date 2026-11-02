@@ -297,9 +297,10 @@ void setup() {
     pinMode(XPT2046_CS, OUTPUT);
     digitalWrite(XPT2046_CS, HIGH);
 
-    // 5. TFT Display Initialisation (Portrait. Use 2 instead of 0 to stand the board the other way up)
+    // 5. TFT Display Initialisation. Portrait: 2 = this way up, 0 = upside down (see README)
     tft.init();
-    tft.setRotation(0);
+    tft.setRotation(2);
+    Serial.printf("[ESP32-035] Screen rotation %d\n", tft.getRotation());
     tft.setSwapBytes(true);
     tft.fillScreen(TFT_BLACK);
 

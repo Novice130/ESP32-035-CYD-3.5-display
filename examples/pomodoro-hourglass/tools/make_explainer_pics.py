@@ -172,6 +172,19 @@ centred(d, 820, 428, "The thin neck stands on the line.", 17, MUTED)
 centred(d, 820, 452, "Words stay far away from it.", 17, MUTED)
 dg.save(os.path.join(OUT, "crack-trick.png"), optimize=True)
 
+# ---------------------------------------------------------------- which way up
+upright = frame("s_synth").resize((240, 360), Image.LANCZOS)
+ud = Image.new("RGB", (640, 520), PAPER)
+d = ImageDraw.Draw(ud)
+for x, im, code, note in ((40, upright, "tft.setRotation(2);", "The right way up"),
+                          (340, upright.rotate(180), "tft.setRotation(0);", "Upside down")):
+    centred(d, x + 130, 16, code, 24, ACCENT)
+    d.rounded_rectangle((x, 56, x + 260, 56 + 380), 14, fill=(30, 34, 46))
+    ud.paste(im, (x + 10, 66))
+    centred(d, x + 130, 448, note, 22)
+centred(d, 320, 484, "Same board, held the same way", 18, MUTED)
+ud.save(os.path.join(OUT, "upside-down.png"), optimize=True)
+
 # ---------------------------------------------------------------- where the parts are on the board
 photo = Image.open(os.path.join(REPO, "docs", "images", "esp32_035_display_front.png")).convert("RGB")
 pw = Image.new("RGB", (800, 620), PAPER)

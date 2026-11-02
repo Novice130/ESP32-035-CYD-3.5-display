@@ -31,9 +31,31 @@ A focus timer with seven animated hourglass scenes, standing up in portrait at t
 
 A tap also resumes when paused. Durations: 1, 5, 10, 15, 20, 25, 30 (default), 45, 60, 75, 90, 105, 120 minutes. Breaks: 5 minutes up to 30-minute sessions, then 10, 15 and 20 minutes.
 
-If the picture is upside down for the way you stand the board, change `tft.setRotation(0)` to `tft.setRotation(2)` in `src/main.cpp`.
-
 Serial test keys at 115200 baud: `n` next scene, `h` jump to halfway, `b` start a break, `w` restart focus.
+
+## Turn the picture upside down
+
+The picture can stand either way up, so you can choose which end of the board goes on top. This project ships with rotation `2`.
+
+![The same board held the same way: setRotation(2) shows the picture upright, setRotation(0) shows it upside down](docs/explainer/upside-down.png)
+
+1. Open `src/main.cpp` and find this line in `setup()`:
+   ```cpp
+   tft.setRotation(2);
+   ```
+2. Change the `2` to a `0`:
+   ```cpp
+   tft.setRotation(0);
+   ```
+3. Upload it from the root of the repository. If more than one board is plugged in, name the port, and check that the `MAC:` line in the upload log is the board you mean:
+   ```bash
+   .venv/bin/pio run -e pomodoro_hourglass -t upload --upload-port /dev/cu.usbserial-XXXX
+   ```
+4. Look at the screen. The serial log at 115200 baud also prints `[ESP32-035] Screen rotation 0`.
+
+To change it back, put the `2` back and upload again. Only `2` and `0` stand the picture up: `1` and `3` lay it on its side, and the art is not made for that.
+
+Leave `ts.setRotation(1)` alone. Touch only tells tap from no tap, and `touchDown()` measures the crack short on that axis. The crack stays on the hourglass neck both ways, because the neck is at the middle of the screen.
 
 ## Build and flash
 

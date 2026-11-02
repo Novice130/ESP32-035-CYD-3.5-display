@@ -172,6 +172,27 @@ Which number do you need to start at 25 minutes? Change the `6` and find out if 
 
 **Change the break rule.** Look for `calcBreakSec` in the same file. Can you make every break 10 minutes?
 
+## 🙃 Turn the picture upside down
+
+One small number decides which way up the picture stands. Both of these are the same board, held the same way:
+
+<img src="docs/explainer/upside-down.png" alt="The same board held the same way: setRotation(2) shows the picture upright, setRotation(0) shows it upside down" width="80%">
+
+1. Open [`src/main.cpp`](src/main.cpp) and find this line:
+   ```cpp
+   tft.setRotation(2);
+   ```
+2. Change the `2` to a `0`:
+   ```cpp
+   tft.setRotation(0);
+   ```
+3. Upload the program to the board again.
+4. Look at the screen. The whole picture has turned around!
+
+To change it back, put the `2` back and upload again.
+
+**Maths time:** the number counts quarter turns. So `2` is two quarter turns away from `0`. That is a half turn, or 180 degrees. What do you think `1` would do? Try it! It lays the picture on its side, and part of it will not fit, because these pictures are made for standing up. Put it back afterwards.
+
 ## 📖 Words to know
 
 | Word | What it means |
@@ -186,6 +207,6 @@ Which number do you need to start at 25 minutes? Change the `6` and find out if 
 ## 👩‍🏫 For teachers
 
 - **Install:** from the repository root, run `.venv/bin/pio run -e pomodoro_hourglass -t upload`. Full build notes are in the [README](README.md).
-- **Upside-down picture?** Change `tft.setRotation(0)` to `tft.setRotation(2)` in [`src/main.cpp`](src/main.cpp).
+- **Upside-down picture?** Follow the steps in [Turn the picture upside down](#-turn-the-picture-upside-down) above.
 - **Good discussion questions:** Why save the background instead of drawing it every time? What other rule could decide the length of a break? Which other problems could you solve by designing around them?
 - All the art is made by code, with no copied images. The quotes are in `include/quotes.h` and are easy to change or replace for your class.
