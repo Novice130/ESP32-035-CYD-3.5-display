@@ -60,10 +60,24 @@ You only need the screen and one tiny sensor.
 | **Tap the screen** during a break | Ends the break and goes back to work |
 | **Hold your finger on the screen** for about 1 second | Next hourglass |
 | **Cover the light sensor** quickly | Next hourglass |
-| **Cover the light sensor** for 2 to 4 seconds | Starts the session again |
-| **Cover the light sensor** for 5 seconds | Pause. Do it again, or tap the screen, to carry on |
+| **Hold your finger on the light sensor** for 5 seconds | **Stops the timer.** The screen says PAUSED |
+| **Hold your finger on the light sensor** for 2 seconds, when it is stopped | **Starts it again**, from where it stopped |
+| **Hold your finger on the light sensor** for 2 seconds, when it is running | Starts the session again from the top |
 
 If you do nothing when the board asks about a break, it waits 15 seconds and starts the next work session.
+
+## ⭐ Everything it can do
+
+- Stands vertical or lies horizontal
+- Seven different hourglasses, with sand that follows the clock
+- Thirteen session lengths, from 1 minute to 2 hours
+- **Stops when you hold the light sensor for 5 seconds, and starts again when you hold it for 2 seconds**
+- Changes to the next hourglass when you ask
+- Asks if you want a break, and picks how long it should be
+- Changes colour during a break
+- Shows a big clock, a progress bar, the percent done and your total time worked
+- Shows a new quote about every 30 seconds, and a well-done message at every 10%
+- Plays little sounds and flashes its coloured light
 
 ## 🎨 The seven hourglasses
 
@@ -172,11 +186,19 @@ Which number do you need to start at 25 minutes? Change the `6` and find out if 
 
 **Change the break rule.** Look for `calcBreakSec` in the same file. Can you make every break 10 minutes?
 
-## 🙃 Turn the picture upside down
+## 🙃 Standing up or lying down
 
-One small number decides which way up the picture stands. Both of these are the same board, held the same way:
+You can use this timer three ways. One small number, called the **rotation**, tells the screen which way to draw.
 
-<img src="docs/explainer/upside-down.png" alt="The same board held the same way: setRotation(2) shows the picture upright, setRotation(0) shows it upside down" width="80%">
+<img src="docs/explainer/which-way.png" alt="Three boards: rotation 2 vertical, rotation 0 vertical and upside down, rotation 1 horizontal" width="100%">
+
+| How you want it | Rotation number | Which program to use |
+| :--- | :---: | :--- |
+| **Vertical** | `2` | This one |
+| **Vertical, upside down** | `0` | This one, with one number changed |
+| **Horizontal** | `1` | [The horizontal one](../pomodoro-hourglass-horizontal/) |
+
+**To turn the vertical picture upside down:**
 
 1. Open [`src/main.cpp`](src/main.cpp) and find this line:
    ```cpp
@@ -186,12 +208,17 @@ One small number decides which way up the picture stands. Both of these are the 
    ```cpp
    tft.setRotation(0);
    ```
-3. Upload the program to the board again.
-4. Look at the screen. The whole picture has turned around!
+3. Upload the program to the board again and look at the screen. To change it back, put the `2` back and upload again.
 
-To change it back, put the `2` back and upload again.
+**To make it horizontal:** upload the horizontal program. It is a separate folder, and it already has `tft.setRotation(1)` in it. Here is the command:
 
-**Maths time:** the number counts quarter turns. So `2` is two quarter turns away from `0`. That is a half turn, or 180 degrees. What do you think `1` would do? Try it! It lays the picture on its side, and part of it will not fit, because these pictures are made for standing up. Put it back afterwards.
+```bash
+.venv/bin/pio run -e pomodoro_hourglass_horizontal -t upload
+```
+
+**Why are there two programs, if it is only one number?** A tall picture cannot fit on a wide screen! The pictures are saved at the exact size of the screen, so the wide screen needs its own wide pictures, with the words beside the hourglass and not above and below it. Good design matches the space you have.
+
+**Maths time:** the number counts quarter turns. `1` is one quarter turn from `0`, or 90 degrees. How many degrees is `2` away from `0`?
 
 ## 📖 Words to know
 
@@ -203,10 +230,11 @@ To change it back, put the `2` back and upload again.
 | **Sensor** | A part that lets a computer notice the world, like light or touch |
 | **If statement** | A rule that tells a computer what to do: if this happens, then do that |
 | **Upload** | Sending a program from your computer to the board |
+| **Rotation** | Which way round the screen draws its picture |
 
 ## 👩‍🏫 For teachers
 
 - **Install:** from the repository root, run `.venv/bin/pio run -e pomodoro_hourglass -t upload`. Full build notes are in the [README](README.md).
-- **Upside-down picture?** Follow the steps in [Turn the picture upside down](#-turn-the-picture-upside-down) above.
+- **Vertical, upside down or horizontal?** Follow the steps in [Standing up or lying down](#-standing-up-or-lying-down) above.
 - **Good discussion questions:** Why save the background instead of drawing it every time? What other rule could decide the length of a break? Which other problems could you solve by designing around them?
 - All the art is made by code, with no copied images. The quotes are in `include/quotes.h` and are easy to change or replace for your class.

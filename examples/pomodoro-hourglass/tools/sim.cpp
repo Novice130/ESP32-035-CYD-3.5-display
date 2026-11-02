@@ -8,7 +8,9 @@
 //    seq=name,8,3    dump 8 frames, 3 ticks apart, as name_0.ppm ...
 //    break           jump to the break state (next p= is break progress)
 //    work            back to focus
-//    pause           pause / resume
+//    pause           the 5 s sensor hold: stop
+//    hold            the 2 s sensor hold: start again
+//    status          print stopped or running, and the time left
 //    scene           next scene (with wipe)
 //    dur             tap: next duration
 //    ask             jump to the take-a-break question
@@ -95,6 +97,10 @@ int main(int argc, char** argv) {
             pomodoro.askBreakTicks = 0;
         } else if (!strcmp(c, "pause")) {
             frame(TAP_LDR_STOP);
+        } else if (!strcmp(c, "hold")) {
+            frame(TAP_LDR_HOLD);
+        } else if (!strcmp(c, "status")) {
+            printf("%s rem=%u\n", pomodoro.isPaused ? "stopped" : "running", (unsigned)pomodoro.sessionRemainingSec);
         } else if (!strcmp(c, "scene")) {
             frame(TAP_LDR_TAP);
         } else if (!strcmp(c, "dur")) {

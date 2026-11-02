@@ -173,17 +173,25 @@ centred(d, 820, 452, "Words stay far away from it.", 17, MUTED)
 dg.save(os.path.join(OUT, "crack-trick.png"), optimize=True)
 
 # ---------------------------------------------------------------- which way up
+HORIZONTAL = os.path.join(os.path.dirname(ROOT), "pomodoro-hourglass-horizontal")
+sim_h = os.path.join(tmp, "sim_h")
+subprocess.run(["clang++", "-std=gnu++17", "-O1", "-w", "-I" + os.path.join(HORIZONTAL, "include"),
+                os.path.join(HORIZONTAL, "tools", "sim.cpp"), "-o", sim_h], check=True)
+subprocess.run([sim_h, tmp, "5", "run=95", "p=0.4", "run=10", "shot=horizontal"], check=True, stdout=subprocess.DEVNULL)
 upright = frame("s_synth").resize((240, 360), Image.LANCZOS)
-ud = Image.new("RGB", (640, 520), PAPER)
-d = ImageDraw.Draw(ud)
-for x, im, code, note in ((40, upright, "tft.setRotation(2);", "The right way up"),
-                          (340, upright.rotate(180), "tft.setRotation(0);", "Upside down")):
-    centred(d, x + 130, 16, code, 24, ACCENT)
-    d.rounded_rectangle((x, 56, x + 260, 56 + 380), 14, fill=(30, 34, 46))
-    ud.paste(im, (x + 10, 66))
-    centred(d, x + 130, 448, note, 22)
-centred(d, 320, 484, "Same board, held the same way", 18, MUTED)
-ud.save(os.path.join(OUT, "upside-down.png"), optimize=True)
+wide = frame("horizontal").resize((360, 240), Image.LANCZOS)
+ww = Image.new("RGB", (1000, 500), PAPER)
+d = ImageDraw.Draw(ww)
+for x, y, im, code, note in ((30, 56, upright, "tft.setRotation(2);", "Vertical"),
+                             (320, 56, upright.rotate(180), "tft.setRotation(0);", "Vertical, upside down"),
+                             (610, 116, wide, "tft.setRotation(1);", "Horizontal")):
+    w, h = im.size
+    cx = x + (w + 20) / 2
+    centred(d, cx, 16, code, 24, ACCENT)
+    d.rounded_rectangle((x, y, x + w + 20, y + h + 20), 14, fill=(30, 34, 46))
+    ww.paste(im, (x + 10, y + 10))
+    centred(d, cx, 448, note, 22)
+ww.save(os.path.join(OUT, "which-way.png"), optimize=True)
 
 # ---------------------------------------------------------------- where the parts are on the board
 photo = Image.open(os.path.join(REPO, "docs", "images", "esp32_035_display_front.png")).convert("RGB")

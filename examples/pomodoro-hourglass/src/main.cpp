@@ -100,13 +100,13 @@ void plat_sfx(uint8_t id, uint16_t p) {
 // LDR SENSOR DETECTOR
 // Measured at 0 dB on this CYD board: room ~0-20, fingertip over it 60-500
 // - Brief Tap (< 1.2s): Next scene
-// - Medium Hold (1.5s - 4.9s): Restarts the hourglass session
-// - Long Hold (>= 5.0s): STOPS / PAUSES or RESUMES the timer!
+// - Hold about 2s (1.5s - 4.9s, acts on release): Starts again. Continues if stopped, else restarts the session
+// - Hold 5s (acts while still covered): STOPS the timer
 // -----------------------------------------------------------------------------
 #define LDR_COVER_RISE  45    // sensitive threshold so even a light touch/shadow triggers
 #define LDR_RELEASE_MS  100   // debounce release
-#define LDR_STOP_MS     5000  // 5 seconds hold stops/pauses timer
-#define LDR_RESTART_MS  1500  // 1.5 - 4.9 seconds hold restarts timer
+#define LDR_STOP_MS     5000  // 5 seconds hold stops the timer
+#define LDR_RESTART_MS  1500  // about 2 seconds (1.5 - 4.9) starts it again
 
 static int ldrBase = -1;
 static int ldrCurrent = 0;
@@ -143,7 +143,7 @@ void pollLdr() {
         if (held >= LDR_STOP_MS && !ldrStopHandled) {
             ldrStopTriggered = true;
             ldrStopHandled = true;
-            Serial.printf("[LDR] 5 SECONDS HOLD REACHED (%lu ms) -> STOPPING/RESUMING TIMER!\n", held);
+            Serial.printf("[LDR] 5 SECONDS HOLD REACHED (%lu ms) -> STOPPING TIMER!\n", held);
         }
 
         if (held > 20000) {
@@ -157,7 +157,7 @@ void pollLdr() {
             unsigned long held = ldrLastDark - ldrCoveredAt;
             if (held >= LDR_RESTART_MS) {
                 ldrHoldTriggered = true;
-                Serial.printf("[LDR] Medium hold (%lu ms) -> Restarting session!\n", held);
+                Serial.printf("[LDR] Medium hold (%lu ms) -> Starting again!\n", held);
             } else if (held >= 30) {
                 ldrTapTriggered = true;
                 Serial.printf("[LDR] Tap released (%lu ms) -> Next scene\n", held);
@@ -333,7 +333,7 @@ void loop() {
     static unsigned long fpsTimer = millis();
     static int frameCount = 0;
     static unsigned long drawMicros = 0;
-    static bool pendingNext = false;
+    static TapType pendingTap = TAP_NONE;
 
     pollTouch();
     updateLED();
@@ -342,17 +342,20 @@ void loop() {
     int ticked = 0;
     while ((long)(now - nextTick) >= 0 && ticked < 3) {
         TapType t = takeTap();
-        if (pendingNext) { t = TAP_LDR_TAP; pendingNext = false; }
+        if (pendingTap != TAP_NONE) { t = pendingTap; pendingTap = TAP_NONE; }
         game_tick(t);
         nextTick += 1000 / TICK_HZ;
         ticked++;
     }
     if ((long)(now - nextTick) > 250) nextTick = now;
 
-    // Serial test keys: n = next scene, h = jump to halfway, b = start a break, w = back to focus
+    // Serial test keys: n = next scene, s = 5 s hold (stop), g = 2 s hold (start again),
+    // h = jump to halfway, b = start a break, w = back to focus
     if (Serial.available()) {
         char key = Serial.read();
-        if (key == 'n') pendingNext = true;
+        if (key == 'n') pendingTap = TAP_LDR_TAP;
+        else if (key == 's') pendingTap = TAP_LDR_STOP;
+        else if (key == 'g') pendingTap = TAP_LDR_HOLD;
         else if (key == 'h') {
             if (pomodoro.state == STATE_BREAK) pomodoro.breakRemainingSec = pomodoro.breakTargetSec / 2;
             else pomodoro.sessionRemainingSec = pomodoro.sessionTargetSec / 2;

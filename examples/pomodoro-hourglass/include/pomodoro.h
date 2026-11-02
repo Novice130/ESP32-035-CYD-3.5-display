@@ -17,8 +17,8 @@ enum TapType : uint8_t {
     TAP_NONE     = 0,
     TAP_DISPLAY  = 1,
     TAP_LDR_TAP  = 2, // brief LDR cover or long press on the display -> next scene
-    TAP_LDR_HOLD = 3, // LDR held 1.5 s - 4.9 s -> restart the session
-    TAP_LDR_STOP = 4  // LDR held >= 5 s -> pause or resume
+    TAP_LDR_HOLD = 3, // LDR held about 2 s (1.5 - 4.9 s) -> start again: continue if stopped, else restart the session
+    TAP_LDR_STOP = 4  // LDR held 5 s -> stop the timer
 };
 
 enum SfxId : uint8_t { SFX_NONE = 0, SFX_DRIP = 1, SFX_TAP = 2, SFX_CHIME = 3, SFX_MILESTONE = 4, SFX_COMPLETE = 5 };
@@ -193,13 +193,12 @@ public:
         tick++;
         // Input first, then everything else keeps animating
         if (tap == TAP_LDR_STOP) {
-            isPaused = !isPaused;
-            if (isPaused) { plat_sfx(SFX_COMPLETE); plat_led(255, 0, 0, 800); }
-            else { plat_sfx(SFX_TAP, 2400); plat_led(0, 255, 100, 400); }
+            if (!isPaused) { isPaused = true; plat_sfx(SFX_COMPLETE); plat_led(255, 0, 0, 800); }
         } else if (tap == TAP_LDR_TAP) {
             nextScene();
         } else if (tap == TAP_LDR_HOLD) {
-            restartWorkSession();
+            if (isPaused) { isPaused = false; plat_sfx(SFX_TAP, 2400); plat_led(0, 255, 100, 400); }
+            else restartWorkSession();
         } else if (isPaused && tap == TAP_DISPLAY) {
             isPaused = false;
             plat_sfx(SFX_TAP, 2200);
