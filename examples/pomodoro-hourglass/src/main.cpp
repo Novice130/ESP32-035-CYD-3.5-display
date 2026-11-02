@@ -98,23 +98,17 @@ void plat_sfx(uint8_t id, uint16_t p) {
 
 // -----------------------------------------------------------------------------
 // LDR SENSOR DETECTOR
-// Measured at 0 dB on this CYD board: bright room ~0-20, fingertip over it 60-500.
-// A dim room reads ~700, with noise of +-50 and short dips to ~320, and the first read after boot
-// is far too low. So samples are averaged, the baseline settles before anything counts, and the
-// rise needed for a cover grows with the baseline.
+// Measured at 0 dB on this CYD board: room ~0-20, fingertip over it 60-500
 // - Brief Tap (< 1.2s): Next scene
 // - Medium Hold (1.5s - 4.9s): Restarts the hourglass session
 // - Long Hold (>= 5.0s): STOPS / PAUSES or RESUMES the timer!
 // -----------------------------------------------------------------------------
-#define LDR_COVER_RISE  45    // smallest rise that counts, so a light touch works in a bright room
-#define LDR_SETTLE_MS   500   // ignore the sensor this long after the first poll
+#define LDR_COVER_RISE  45    // sensitive threshold so even a light touch/shadow triggers
 #define LDR_RELEASE_MS  100   // debounce release
 #define LDR_STOP_MS     5000  // 5 seconds hold stops/pauses timer
 #define LDR_RESTART_MS  1500  // 1.5 - 4.9 seconds hold restarts timer
 
 static int ldrBase = -1;
-static long ldrAvgQ8 = -1;    // running average of the samples, times 256
-static unsigned long ldrFirstPoll = 0;
 static int ldrCurrent = 0;
 static bool ldrCovered = false;
 static unsigned long ldrCoveredAt = 0;
@@ -127,16 +121,12 @@ static bool ldrStopHandled = false;
 
 void pollLdr() {
     unsigned long now = millis();
-    int raw = analogRead(CYD_LDR_PIN);
-    if (ldrAvgQ8 < 0) { ldrAvgQ8 = (long)raw << 8; ldrFirstPoll = now; }
-    ldrAvgQ8 += (((long)raw << 8) - ldrAvgQ8) / 32;  // about 6 ms at 5000 polls a second
-    int v = (int)(ldrAvgQ8 >> 8);
+    int v = analogRead(CYD_LDR_PIN);
     ldrCurrent = v;
-    if (now - ldrFirstPoll < LDR_SETTLE_MS) { ldrBase = v; return; }
+    if (ldrBase < 0) ldrBase = v;
 
-    int rise = ldrBase / 4 > LDR_COVER_RISE ? ldrBase / 4 : LDR_COVER_RISE;
     if (!ldrCovered) {
-        if (v - ldrBase >= rise) {
+        if (v - ldrBase >= LDR_COVER_RISE) {
             ldrCovered = true;
             ldrCoveredAt = ldrLastDark = now;
             ldrStopHandled = false;
@@ -145,7 +135,7 @@ void pollLdr() {
             ldrBaseAt = now;
             ldrBase += (v - ldrBase) / 16; // slowly follow room ambient light
         }
-    } else if (v - ldrBase >= rise / 2) {
+    } else if (v - ldrBase >= LDR_COVER_RISE / 2) {
         ldrLastDark = now;
         unsigned long held = now - ldrCoveredAt;
 

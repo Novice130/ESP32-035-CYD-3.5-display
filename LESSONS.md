@@ -13,11 +13,16 @@ Newest first. Add to it whenever something costs more than a few minutes.
 - **Fix:** `board_build.flash_mode = qio` and `board_build.f_flash = 80000000L`, plus a per-row tile hash so only changed tiles go over SPI: 13.3 ms. Same scene. Booted fine on this board.
 - **Note:** the Mac `bench` is only a rough proxy (25 us there, about 13 ms total on the board). Log frame time from the board.
 
-### Timer paused itself: the light sensor gave false covers
-- **Symptom:** the timer stopped and restarted on its own about every 30 s. An earlier run saw scenes skip ahead, with no cause found at the time.
-- **Evidence:** `[DIAG]` min/max/average per second, nobody touching the board. First read after boot 292, then a steady average of 700 with peaks of 750 and dips to about 320. So the baseline locked at 292 and "covered" lasted until the 5 s pause fired. Later, noise alone crossed the fixed 45-count rise.
-- **Fix:** average the samples, settle the baseline for 0.5 s from the first poll (not from boot: `setup()` takes over 900 ms and my first try missed that), and require a rise of at least a quarter of the baseline. 100 s idle afterwards: no false events and the clock counted steadily.
-- **Still to check:** a real fingertip in a dim room. The needed rise at a baseline of 700 is now 175 counts.
+### Flashed the wrong board and believed it
+- **Symptom:** the user said the screen was still horizontal after I reported the portrait firmware as running.
+- **Evidence:** two ESP32s were plugged in. `pio run -t upload` with no port picked `/dev/cu.usbserial-0001` (MAC 08:3a:f2:b7:c2:78, chip ESP32-D0WDQ6), which has no touch chip or light sensor: `raw x=8191 z=4095`, GPIO 34 floating at about 700. The CYD was on `/dev/cu.usbserial-11110` (MAC fc:e8:c0:7c:45:24, chip ESP32-D0WD-V3), `raw x about 1700 z about 4100`, LDR 0, still printing the old banner. My test script also stopped at the first port that printed the banner.
+- **Damage:** the other ESP32's firmware was overwritten. The floating pin looked like a light-sensor bug, so I "fixed" and documented a problem the CYD does not have. Both were reverted once the real board's log showed LDR 0 and no false events.
+- **Fix:** with more than one board connected, always pass `--upload-port` and check the MAC in the upload log. A serial banner proves what one port runs, not that it is the board the user is looking at. Readings like `x=8191` that do not match earlier logs mean stop and check which board this is.
+
+### Unexplained: extra scene changes in one test run
+- **Symptom:** in one serial test run scenes skipped ahead, as if the sensor or touch had fired. That run did not log `[LDR]`/`[Touch]` lines.
+- **Evidence:** not reproduced in about 3 minutes of logged runs, including idle and the same key sequence. Cause not found.
+- **If it returns:** watch for `[LDR] Tap released` or `[Touch] Long press` in the serial log. A light change or hand near the sensor is the first suspect.
 
 ### Portrait moves a vertical crack to a horizontal one
 - **Symptom:** the crack at landscape x=240 is at y=240 in portrait, so it runs across any full-height layout.

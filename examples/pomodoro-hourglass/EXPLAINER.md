@@ -149,18 +149,6 @@ hourglass right on the line**, and kept all the words far away from it.
 
 Engineers do this all the time: when you cannot fix a problem, design around it.
 
-### 6. The light sensor stopped telling fibs
-
-While testing, the timer kept pausing all by itself, with nobody touching it! So we had the board print out
-what its light sensor was reading. We found two problems:
-
-- The very first reading after switching on was far too low, so the board thought a finger was covering it.
-- In a dim room the readings jump up and down a lot, and those jumps looked like a finger too.
-
-The fix was to **wait a moment after switching on, and to use the average of many readings**, not just one.
-Scientists do the same when they repeat a measurement. Finding this was just like a science experiment:
-look at the evidence first, then fix the problem.
-
 ## 🛠️ Change it yourself
 
 The program is written in a language called **C++**. Ask a grown-up to help you install the tools from the
@@ -193,7 +181,6 @@ Which number do you need to start at 25 minutes? Change the `6` and find out if 
 | **Layer** | One part of a picture that is stacked on top of other parts |
 | **Sensor** | A part that lets a computer notice the world, like light or touch |
 | **If statement** | A rule that tells a computer what to do: if this happens, then do that |
-| **Average** | One number that sums up many numbers: add them all, then divide by how many there are |
 | **Upload** | Sending a program from your computer to the board |
 
 ## 👩‍🏫 For teachers
