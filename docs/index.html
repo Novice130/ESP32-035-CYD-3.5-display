@@ -246,6 +246,26 @@
       <p>Keep this browser window open (it can be behind other windows, just don't minimise or close it).</p></details>
   </section>
 
+  <section class="card" style="margin-top: 24px;">
+    <h2>⏳ Featured Project: Pomodoro Hourglass</h2>
+    <p class="lead" style="margin-bottom: 12px;">A Standing-Up Focus Timer with Seven Animated Hourglass Scenes, Rotating Wisdom Quotes & Smart Break Reminders</p>
+    <img src="images/pomodoro_screens.png" alt="Pomodoro Hourglass scenes: bronze sand, amber embers, water drops, zen ink, chemical titration, neon plasma, black hole" style="width:100%; border-radius:12px; border:2px solid var(--line); margin-bottom:14px;">
+    <p>Pick your hourglass: <b>fine sand, glowing embers, falling water drops, zen ink, a chemical titration, neon plasma or a black hole</b>, drawn at the screen's full resolution, with dynamic quotes from the Quran, Sahih Hadith, Umar (RA), Abu Bakr (RA), Ali (RA), Imam al-Ghazali, Rumi, and universal wisdom.</p>
+    <ul style="padding-left: 20px; margin: 8px 0 14px; font-size: 0.95rem; color: var(--muted);">
+      <li><b>Touch to set duration</b>: 1m up to 2 hours (default: 30m).</li>
+      <li><b>Tap the light sensor (LDR) or hold the screen</b>: next scene. <b>Cover the sensor for 1.5 s</b>: restart the timer. <b>5 s</b>: pause.</li>
+      <li><b>Smart break prompt</b>: asks <i>"Hey, do you want to take a break?"</i> after each session. Tap to relax or wait to auto-continue!</li>
+      <li><b>Focus Tracker</b>: tracks cumulative hours worked at the top of the display.</li>
+    </ul>
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:8px;">
+      <esp-web-install-button manifest="firmware/pomodoro-hourglass/manifest.json">
+        <button slot="activate" style="margin:0;">Install Pomodoro Hourglass</button>
+      </esp-web-install-button>
+      <a href="https://github.com/Novice130/ESP32-035-CYD-3.5-display/tree/main/examples/pomodoro-hourglass" style="font-weight:700; text-decoration:none;">View Source on GitHub →</a>
+      <a href="https://github.com/Novice130/ESP32-035-CYD-3.5-display/blob/main/examples/pomodoro-hourglass/EXPLAINER.md" style="font-weight:700; text-decoration:none;">🧒 Explainer for students →</a>
+    </div>
+  </section>
+
   <footer>
     <p>💡 The screen-mirror idea came from <b>Abdul Samad Idowu</b>, a grade 6 student. Thank you, Abdul Samad!</p>
     <p>Part of the <a href="https://github.com/Novice130/ESP32-035-CYD-3.5-display">ESP32-035 CYD projects</a>.
