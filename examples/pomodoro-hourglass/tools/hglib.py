@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Shared art kit for the hourglass scenes. Host only: Python 3 + Pillow, no numpy.
 
-A scene script paints a 480x320 RGB background and a 480x320 RGBA front layer,
-describes the glass with a Glass object and calls emit(). Output: include/art/<name>.h
+A scene script paints a full-screen portrait background (320x480, screen coordinates), then calls
+hero_view() and paints the hourglass in "hero space": x is the screen x, y is the screen y minus oy.
+Scene code (include/scenes/*.h) works in hero space too, so oy can move a glass up or down.
+With oy=80 the neck at hero row 160 lands on the crack at screen row 240.
+Output of emit(): include/art/<name>.h
 Everything must stay deterministic: use random.Random(seed), never the global random.
 """
 import math
@@ -10,9 +13,10 @@ import os
 import random
 from PIL import Image, ImageDraw, ImageFilter
 
-W, H = 480, 320
-HERO_MAX_X = 224     # hourglass stays left of this (crack at x=240)
-PANEL_X, PANEL_W = 256, 214
+W, H = 320, 480
+HERO_ROWS = 320
+CARD_TOP = (6, 3, 314, 77)         # clock card, above the glass
+CARD_BOTTOM = (6, 402, 314, 478)   # quote card, below the glass
 MAX_DYN_PIXELS = 40000
 MAX_FRONT_PIXELS = 14000
 
@@ -92,6 +96,13 @@ def vgradient(img, stops, x0=0, x1=W, y0=0, y1=H):
         c = tuple(int(v) for v in ramp(stops, (y - y0) / max(1, y1 - y0 - 1)))
         for x in range(x0, x1):
             px[x, y] = c
+
+
+def hero_view(portrait, oy):
+    """A canvas whose row 0 is screen row oy. Paint the hourglass on it, emit() puts it back."""
+    view = Image.new("RGB", (W, H))
+    view.paste(portrait.crop((0, oy, W, H)), (0, 0))
+    return view
 
 
 def vignette(img, strength=0.45, cx=W * 0.5, cy=H * 0.5):
@@ -270,16 +281,22 @@ def glass_dyn_rect(g, pad_x=4, extra_top=0, extra_bot=0):
     return (x0 - pad_x, g.top - 2 - extra_top, x1 - x0 + 2 * pad_x, g.bot - g.top + 5 + extra_top + extra_bot)
 
 
-def emit(name, bg, front, g, dyn=None):
-    """Write include/art/<name>.h. bg RGB 480x320, front RGBA 480x320 (or None)."""
-    assert bg.size == (W, H)
+def emit(name, bg, front, g, dyn=None, portrait=None, oy=80, card=None):
+    """Write include/art/<name>.h. bg and front are hero-space canvases, portrait the full-screen
+    background they came from. card = (fill, alpha, border, border_alpha) for the two text cards."""
+    assert bg.size == (W, H) and portrait.size == (W, H)
     dx, dy, dw, dh = dyn or glass_dyn_rect(g)
-    assert dx >= 0 and dy >= 0 and dx + dw <= W and dy + dh <= H, "dynamic rect off screen"
+    assert dx >= 0 and dy >= 0 and dx + dw <= W and dy + dh <= HERO_ROWS, "dynamic rect off screen"
     assert dw <= 255, "dynamic rect wider than 255"
     assert dw * dh <= MAX_DYN_PIXELS, f"dynamic rect {dw}x{dh}={dw*dh} over {MAX_DYN_PIXELS}"
-    assert dx + dw <= HERO_MAX_X + 16, "dynamic rect runs into the crack gutter"
+    assert CARD_TOP[3] <= dy + oy and dy + dh + oy <= CARD_BOTTOM[1], "dynamic rect runs under a text card"
 
-    bpx = bg.convert("RGB").load()
+    screen = portrait.convert("RGB")
+    screen.paste(bg.crop((0, 0, W, H - oy)), (0, oy))
+    if card:
+        for c in (CARD_TOP, CARD_BOTTOM):
+            rounded_panel(screen, *c, 10, *card)
+    bpx = screen.load()
     words = []
     for y in range(H):
         for x in range(W):
@@ -292,16 +309,16 @@ def emit(name, bg, front, g, dyn=None):
     if front is not None:
         fpx = front.load()
         # anything outside the dynamic rect is flattened into the background
-        for y in range(H):
+        for y in range(H - oy):
             for x in range(W):
                 if dx <= x < dx + dw and dy <= y < dy + dh:
                     continue
                 r, gg, b, a = fpx[x, y]
                 if a:
-                    base = words[y * W + x]
+                    base = words[(y + oy) * W + x]
                     br, bg_, bb = ((base >> 11) & 31) * 255 // 31, ((base >> 5) & 63) * 255 // 63, (base & 31) * 255 // 31
                     k = a / 255
-                    words[y * W + x] = dither565(x, y, br + (r - br) * k, bg_ + (gg - bg_) * k, bb + (b - bb) * k)
+                    words[(y + oy) * W + x] = dither565(x, y + oy, br + (r - br) * k, bg_ + (gg - bg_) * k, bb + (b - bb) * k)
         for y in range(dy, dy + dh):
             idx.append(len(stream))
             runs = []
@@ -327,7 +344,7 @@ def emit(name, bg, front, g, dyn=None):
     assert front_count <= MAX_FRONT_PIXELS, f"front layer {front_count} px over {MAX_FRONT_PIXELS}"
 
     gl, gr = [], []
-    for y in range(H):
+    for y in range(HERO_ROWS):
         r = g.radius(y) if g.top <= y <= g.bot else 0.0
         gl.append(int(round((g.cx - r) * 16)))
         gr.append(int(round((g.cx + r) * 16)))
@@ -346,10 +363,10 @@ def emit(name, bg, front, g, dyn=None):
             for i in range(0, len(stream), 40):
                 f.write(",".join(str(v) for v in stream[i:i + 40]) + ",\n")
             f.write("};\n")
-        f.write(f"static const int16_t ART_{name}_gl[{H}] = {{" + ",".join(map(str, gl)) + "};\n")
-        f.write(f"static const int16_t ART_{name}_gr[{H}] = {{" + ",".join(map(str, gr)) + "};\n")
+        f.write(f"static const int16_t ART_{name}_gl[{HERO_ROWS}] = {{" + ",".join(map(str, gl)) + "};\n")
+        f.write(f"static const int16_t ART_{name}_gr[{HERO_ROWS}] = {{" + ",".join(map(str, gr)) + "};\n")
         fr = (f"ART_{name}_front, ART_{name}_fidx" if front is not None else "nullptr, nullptr")
         f.write(f"static const SceneArt ART_{name} = {{ ART_{name}_bg, {fr}, ART_{name}_gl, ART_{name}_gr, "
-                f"{dx}, {dy}, {dw}, {dh}, {g.cx}, {g.top}, {g.neck}, {g.bot} }};\n")
+                f"{dx}, {dy}, {dw}, {dh}, {g.cx}, {g.top}, {g.neck}, {g.bot}, {oy} }};\n")
     print(f"{name}: dyn {dx},{dy} {dw}x{dh} = {dw*dh} px, front {front_count} px, wrote {os.path.relpath(path)}")
     return path

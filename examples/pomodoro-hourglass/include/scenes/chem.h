@@ -14,7 +14,7 @@
 
 namespace chem {
 
-enum { NX = 38, NY = 36, NCELL = NX * NY, GX0 = 44, CELL = 4 };
+enum { NX = 38, NY = 36, NCELL = NX * NY, GX0 = 86, CELL = 4 };
 enum { TIP_Y = 177, MAX_BUB = 20, MAX_SPL = 8, MAX_PLUME = 3, WAVE_W = 148 };
 static const float FILL = 0.74f, ANALYTE = 0.22f;   // same constants in tools/art_chem.py
 

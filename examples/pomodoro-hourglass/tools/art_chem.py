@@ -7,7 +7,8 @@ from hglib import *
 
 rng = random.Random(23)
 
-CX = 118
+CX = 160
+OY = 80
 TOP, NECK, BOT = 25, 158, 289
 RMAX, RNECK = 65.0, 2.6
 STEM = 7           # straight bore each side of the neck, hidden by the stopcock
@@ -75,7 +76,7 @@ def upper_level(f):
 # ---------------------------------------------------------------- the room: wall tiles caught in the glow
 bg = new_rgb()
 px = bg.load()
-TW, TH = 34, 17
+TW, TH = 34, 17   # (screen coordinates until hero_view below)
 tile_tone = {}
 for y in range(H):
     row = y // TH
@@ -90,8 +91,8 @@ for y in range(H):
         grout = gx == 0 or gy == 0
         bevel = 1.12 if (gy == 1 or gx == 1) else (0.90 if (gy == TH - 1 or gx == TW - 1) else 1.0)
         # light from the upper bulb and a weaker one from the lower bulb
-        d1 = math.hypot((x - CX) / 135.0, (y - 90) / 150.0)
-        d2 = math.hypot((x - CX) / 110.0, (y - 235) / 90.0)
+        d1 = math.hypot((x - CX) / 135.0, (y - 170) / 150.0)
+        d2 = math.hypot((x - CX) / 110.0, (y - 315) / 90.0)
         l1 = math.exp(-d1 * d1 * 1.5)
         l2 = math.exp(-d2 * d2 * 1.5)
         base = (7.0, 10.0, 15.0)
@@ -107,16 +108,16 @@ for y in range(H):
 # ---- shelf with out-of-focus bottles, up in the dark on the right of the glass
 blur = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 d = ImageDraw.Draw(blur)
-d.rectangle((186, 86, 300, 91), fill=(26, 44, 34, 255))
-d.rounded_rectangle((196, 44, 216, 86), 4, fill=(20, 48, 34, 255))
-d.rectangle((202, 32, 210, 46), fill=(20, 48, 34, 255))
-d.polygon([(222, 86), (246, 86), (237, 58), (237, 42), (231, 42), (231, 58)], fill=(34, 24, 60, 255))
-d.rectangle((201, 60, 212, 74), fill=(70, 84, 70, 110))
+d.rectangle((244, 166, W, 171), fill=(26, 44, 34, 255))
+d.rounded_rectangle((254, 124, 274, 166), 4, fill=(20, 48, 34, 255))
+d.rectangle((260, 112, 268, 126), fill=(20, 48, 34, 255))
+d.polygon([(280, 166), (304, 166), (295, 138), (295, 122), (289, 122), (289, 138)], fill=(34, 24, 60, 255))
+d.rectangle((259, 140, 270, 154), fill=(70, 84, 70, 110))
 blur = blur.filter(ImageFilter.GaussianBlur(1.6))
 bg.paste(blur, (0, 0), blur)
 
 # ---- bench: polished black slate, reflecting everything
-BENCH = 280
+BENCH = 360
 px = bg.load()
 for y in range(BENCH, H):
     t = (y - BENCH) / (H - BENCH)
@@ -124,15 +125,17 @@ for y in range(BENCH, H):
         n = 0.5 + 0.5 * math.sin(x * 0.043 + y * 0.31 + 2.2 * math.sin(y * 0.11 + x * 0.013))
         c = mixc((13, 17, 19), (6, 8, 10), t)
         c = mixc(c, (20, 26, 28), 0.25 * n)
-        ref1 = math.exp(-(((x - CX) / 118.0) ** 2) - ((y - 300) / 22.0) ** 2)
-        ref2 = math.exp(-(((x - CX) / 56.0) ** 2) - ((y - 292) / 12.0) ** 2)
+        ref1 = math.exp(-(((x - CX) / 118.0) ** 2) - ((y - 380) / 22.0) ** 2)
+        ref2 = math.exp(-(((x - CX) / 56.0) ** 2) - ((y - 372) / 12.0) ** 2)
         c = (c[0] + ref1 * 26 + ref2 * 40, c[1] + ref1 * 92 + ref2 * 34, c[2] + ref1 * 40 + ref2 * 86)
         px[x, y] = tuple(min(255, int(v)) for v in c)
 for x in range(W):
     k = math.exp(-((x - CX) / 150.0) ** 2)
     blend_px(px, x, BENCH, (120, 230, 120), 0.08 + 0.55 * k)
     blend_px(px, x, BENCH + 1, (70, 140, 80), 0.05 + 0.25 * k)
-vignette(bg, 0.5, CX + 40, 150)
+vignette(bg, 0.5, CX + 20, 230)
+P = bg
+bg = hero_view(P, OY)
 
 
 # ---- steel helpers: lit from the glass side (right)
@@ -141,12 +144,12 @@ def lit_rod(x0, x1):
             (.74, (96, 150, 100)), (.92, (150, 214, 136)), (1, (60, 96, 62))]
 
 
-ROD_X0, ROD_X1 = 15, 22
+ROD_X0, ROD_X1 = 57, 64
 shadow_ellipse(bg, ROD_X0 + 3, 299, 26, 4, alpha=0.55, blur=3)
 
 # ---- iron base plate
-BASE_L, BASE_R, BASE_T, BASE_B = 5, 174, 298, 313
-shadow_ellipse(bg, 90, 314, 92, 4, alpha=0.7, blur=3)
+BASE_L, BASE_R, BASE_T, BASE_B = 47, 216, 298, 313
+shadow_ellipse(bg, 132, 314, 92, 4, alpha=0.7, blur=3)
 PLATE = [(0, (20, 26, 26)), (.12, (40, 54, 48)), (.32, (64, 112, 74)), (.55, (96, 190, 104)),
          (.76, (58, 104, 68)), (1, (24, 32, 30))]
 metal_bar(bg, BASE_L, BASE_R, BASE_T, BASE_B, [(0, (15, 19, 20)), (.5, (30, 44, 36)), (1, (14, 18, 19))], radius=3,
@@ -206,7 +209,7 @@ metal_bar(bg, ROD_X0 - 13, ROD_X0 - 10, RING_Y - 5, RING_Y + 5, [(0, (30, 34, 34
 # ---- small Erlenmeyer on the bench, a violet ember of the analyte
 fl = Image.new("RGBA", (W * 3, H * 3), (0, 0, 0, 0))
 fd = ImageDraw.Draw(fl)
-FX, FB, FT = 206 * 3, 295 * 3, 252 * 3
+FX, FB, FT = 248 * 3, 295 * 3, 252 * 3
 fd.polygon([(FX - 5 * 3, FT), (FX + 5 * 3, FT), (FX + 5 * 3, FT + 12 * 3), (FX + 17 * 3, FB), (FX - 17 * 3, FB), (FX - 5 * 3, FT + 12 * 3)],
            fill=(90, 130, 110, 46))
 fd.polygon([(FX - 11 * 3, 281 * 3), (FX + 11 * 3, 281 * 3), (FX + 16 * 3, FB - 2), (FX - 16 * 3, FB - 2)], fill=(92, 58, 170, 200))
@@ -219,10 +222,10 @@ fl = fl.resize((W, H), Image.LANCZOS)
 bg.paste(fl, (0, 0), fl)
 add_glow(bg, lambda dr: dr.ellipse((FX / 3 - 20, 270, FX / 3 + 20, 306), fill=(30, 12, 54)), 8)
 # mirrored faintly in the slate
-ref = fl.crop((180, 252, 232, 296)).transpose(Image.FLIP_TOP_BOTTOM).filter(ImageFilter.GaussianBlur(1.4))
+ref = fl.crop((222, 252, 274, 296)).transpose(Image.FLIP_TOP_BOTTOM).filter(ImageFilter.GaussianBlur(1.4))
 ra = ref.split()[3].point(lambda v: int(v * 0.2))
 ref.putalpha(ra)
-bg.paste(ref.crop((0, 0, 52, 22)), (180, 296), ref.crop((0, 0, 52, 22)))
+bg.paste(ref.crop((0, 0, 52, 22)), (222, 296), ref.crop((0, 0, 52, 22)))
 
 # ---- ground-glass stopper on the top of the funnel (outside the dynamic rect)
 GLS = [(0, (30, 50, 40)), (.18, (110, 170, 120)), (.34, (230, 255, 220)), (.55, (120, 180, 120)), (.85, (70, 120, 80)), (1, (40, 64, 50))]
@@ -385,7 +388,4 @@ for i in range(1, 11):
         tiny(XA_LOW - 3, int(y - 2.4 * ((XA_LOW - CX) / radius(int(y))) ** 2) - 2, str(i * 5))
 tiny(XA_LOW + 8, TOP + 12, "20oC", 0.55) if False else None
 
-# ---------------------------------------------------------------- info card
-rounded_panel(bg, 250, 6, 476, 314, 10, (7, 11, 11), 0.86, (120, 230, 130), 0.30)
-
-emit("chem", bg, front, g, dyn=(CX - 74, 22, 148, 270))
+emit("chem", bg, front, g, dyn=(CX - 74, 22, 148, 270), portrait=P, oy=OY, card=((7, 11, 11), 0.86, (120, 230, 130), 0.30))

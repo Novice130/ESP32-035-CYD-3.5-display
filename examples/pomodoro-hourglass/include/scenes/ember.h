@@ -77,7 +77,7 @@ static void buildPalette(State& st, float brk) {
     for (int i = 0; i < 48; i++) {
         rampAt(GLO_F, 4, i, f); rampAt(GLO_B, 4, i, b);
         st.glo[i] = C565(f[0] + ((b[0] - f[0]) * t >> 8), f[1] + ((b[1] - f[1]) * t >> 8), f[2] + ((b[2] - f[2]) * t >> 8));
-        st.solid[i] = add565(ART_ember.bg[(ART_ember.neck - 40) * SCR_W + ART_ember.cx], st.glo[i]);
+        st.solid[i] = add565(art_bg_row(ART_ember, ART_ember.neck - 40)[ART_ember.cx], st.glo[i]);
     }
     st.brk = brk;
 }

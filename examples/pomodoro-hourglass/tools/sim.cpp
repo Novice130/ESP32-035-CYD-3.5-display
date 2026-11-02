@@ -1,5 +1,5 @@
 // ==============================================================================
-//  sim.cpp - runs the real engine on the Mac against a fake 480x320 panel.
+//  sim.cpp - runs the real engine on the Mac against a fake 320x480 panel.
 //
 //  sim <outdir> <scene-index> <commands...>     writes <outdir>/<tag>.ppm
 //    p=0.35          jump the session to 35 % and run 90 ticks so particles settle
@@ -14,6 +14,7 @@
 //    ask             jump to the take-a-break question
 //    bench           print average draw time over 120 frames
 //    praise          trigger the 50 % milestone
+//    layers=name     dump the layers of one frame: name_bg, name_live (scene drawing only), name_front
 // ==============================================================================
 #include <stdio.h>
 #include <stdlib.h>
@@ -100,6 +101,19 @@ int main(int argc, char** argv) {
             frame(TAP_DISPLAY);
         } else if (!strcmp(c, "praise")) {
             pomodoro.triggerMilestone(5);
+        } else if (!strncmp(c, "layers=", 7)) {
+            const Scene& sc = *SCENES[pomodoro.currentScene];
+            const SceneArt& a = *sc.art;
+            char tag[160];
+            memcpy(panel, a.bg, sizeof(panel));
+            snprintf(tag, sizeof(tag), "%s_bg", c + 7); dump(out, tag);
+            for (int pass = 0; pass < 2; pass++) {
+                memset(panel, 0, sizeof(panel));
+                memset(hero, 0, a.dw * a.dh * 2);
+                if (pass == 0) sc.draw(pomodoro.ctx); else art_apply_front(pomodoro.ctx.s, a);
+                for (int r = 0; r < a.dh; r++) memcpy(panel + (a.dy + a.oy + r) * SCR_W + a.dx, hero + r * a.dw, a.dw * 2);
+                snprintf(tag, sizeof(tag), "%s_%s", c + 7, pass ? "front" : "live"); dump(out, tag);
+            }
         } else if (!strcmp(c, "bench")) {
             using clk = std::chrono::steady_clock;
             const Scene& sc = *SCENES[pomodoro.currentScene];

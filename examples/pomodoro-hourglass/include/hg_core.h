@@ -1,10 +1,13 @@
 // ==============================================================================
-//  hg_core.h - native 480x320 scene engine for the Pomodoro Hourglass.
+//  hg_core.h - native 320x480 portrait scene engine for the Pomodoro Hourglass.
 //
 //  Each scene has a pre-rendered full-screen background and a "front" layer in
 //  flash (made by tools/art_<scene>.py). Every frame only the dynamic rectangle
 //  around the glass is rebuilt: copy background -> scene draws -> front layer ->
 //  push. Pure C++, the same code runs on the ESP32 and in tools/sim.cpp.
+//
+//  Scenes work in "hero space": x is the screen x, y is the screen y minus art.oy.
+//  So a scene never needs to know where on the screen its hourglass stands.
 // ==============================================================================
 #pragma once
 #include <stdint.h>
@@ -13,14 +16,14 @@
 #include <math.h>
 #include "hg_fonts.h"
 
-#define SCR_W 480
-#define SCR_H 320
+#define SCR_W 320
+#define SCR_H 480
+#define HERO_ROWS 320   // hero space is 320 rows tall
 #define TICK_HZ 30
 
-// The panel has a vertical crack near x=240. The hourglass lives left of it, text right of it.
-#define HERO_MAX_X 224
-#define PANEL_X 256
-#define PANEL_W 214
+// In portrait the panel's crack is a horizontal line near y=240. The neck of the hourglass stands
+// on it, the clock sits in a card above the glass and the quote in a card below it.
+#define PANEL_W 296     // widest text band
 
 #define HERO_MAX_PIXELS 40000   // 80 KB dynamic rectangle
 #define SCENE_ARENA_BYTES 24576 // per-scene RAM (only the active scene uses it)
@@ -239,7 +242,7 @@ static void drawPill(const Surf& s, int x, int y, int w, int h, uint16_t c, int 
 
 // ---------------------------------------------------------------- generated art
 struct SceneArt {
-    const uint16_t* bg;        // SCR_W * SCR_H RGB565, full screen, in flash
+    const uint16_t* bg;        // SCR_W * SCR_H RGB565, full screen, in flash (screen rows, not hero rows)
     const uint8_t* front;      // run-coded front layer (see art_apply_front)
     const uint32_t* frontIdx;  // offset of each row of the dynamic rectangle in front[]
     const int16_t* gl;         // gl[y], gr[y]: inner glass edges x*16 for every screen row; gl>=gr outside the glass
@@ -247,7 +250,11 @@ struct SceneArt {
     int16_t dx, dy, dw, dh;    // dynamic rectangle
     int16_t cx;                // glass centre x
     int16_t top, neck, bot;    // glass inner top row, narrowest row, bottom row
+    int16_t oy;                // screen y of hero row 0
 };
+
+// Background pixels of a hero-space row.
+static inline const uint16_t* art_bg_row(const SceneArt& a, int y) { return a.bg + (y + a.oy) * SCR_W; }
 
 // Inner glass span on row y in pixels. false when the row has no glass.
 static inline bool art_inner(const SceneArt& a, int y, int& xl, int& xr) {
@@ -262,7 +269,7 @@ static inline float art_radius(const SceneArt& a, int y) {
 }
 
 static void art_copy_bg(Surf& s, const SceneArt& a) {
-    const uint16_t* src = a.bg + a.dy * SCR_W + a.dx;
+    const uint16_t* src = art_bg_row(a, a.dy) + a.dx;
     uint16_t* dst = s.px;
     for (int y = 0; y < a.dh; y++, src += SCR_W, dst += a.dw) memcpy(dst, src, a.dw * 2);
 }

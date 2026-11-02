@@ -7,7 +7,8 @@ from hglib import *
 import hglib
 
 rng = random.Random(1731)
-CX = 112
+CX = 160
+OY = 80
 TOP, NECK, BOT = 26, 156, 294
 
 
@@ -66,7 +67,7 @@ fbm = make_noise(5)
 # ---------------------------------------------------------------- night sky through the window
 bg = new_rgb()
 px = bg.load()
-MOON = (146, 58, 12)
+MOON = (288, 112, 12)   # off to the right of the top cap
 for y in range(H):
     t = y / (H - 1)
     base = ramp([(0, (5, 14, 28)), (.35, (8, 34, 50)), (.62, (12, 54, 68)), (.8, (7, 34, 46)), (1, (3, 14, 22))], t)
@@ -84,9 +85,9 @@ d = ImageDraw.Draw(layer)
 for i in range(26):
     tx = rng.uniform(-20, W + 20)
     tr = rng.uniform(24, 62)
-    ty = rng.uniform(176, 232)
+    ty = rng.uniform(256, 312)
     d.ellipse((tx - tr, ty - tr * 1.2, tx + tr, ty + tr * 1.2), fill=(3, 16, 22, 235))
-d.rectangle((0, 226, W, 300), fill=(3, 13, 18, 245))
+d.rectangle((0, 306, W, 380), fill=(3, 13, 18, 245))
 layer = layer.filter(ImageFilter.GaussianBlur(7))
 bg.paste(layer, (0, 0), layer)
 px = bg.load()
@@ -115,20 +116,17 @@ while placed < 34:
     warm = rng.random() < 0.62
     col = rng.choice(WARM if warm else COOL)
     r = rng.uniform(4, 15) * (1.25 if placed < 6 else 1.0)
-    x = rng.uniform(0, 236)
-    y = rng.uniform(205, 286)
+    x = rng.uniform(0, W)
+    y = rng.uniform(285, 366)
     # the drop falls down the middle: that stretch of the window stays dark so it reads
-    keep = abs(x - CX) / 62 + max(0, y - 150) / 150 * .55
+    keep = abs(x - CX) / 62 + max(0, y - 230) / 150 * .55
     if rng.random() > keep:
         continue
     bokeh(x, y, r, col, rng.uniform(.14, .40))
     placed += 1
-for i in range(18):  # a few also behind the card, kept faint by the card itself
-    col = rng.choice(WARM + COOL)
-    bokeh(rng.uniform(236, W), rng.uniform(190, 290), rng.uniform(6, 14), col, rng.uniform(.08, .20))
 for i in range(12):  # high distant windows, off to the sides
-    side = rng.choice((rng.uniform(0, 44), rng.uniform(186, 236)))
-    bokeh(side, rng.uniform(110, 190), rng.uniform(2.0, 4.5), rng.choice(WARM), rng.uniform(.18, .4))
+    side = rng.choice((rng.uniform(0, 56), rng.uniform(264, W)))
+    bokeh(side, rng.uniform(150, 270), rng.uniform(2.0, 4.5), rng.choice(WARM), rng.uniform(.18, .4))
 
 # the moon: pale, slightly veiled by cloud
 for y in range(int(MOON[1] - MOON[2] - 2), int(MOON[1] + MOON[2] + 3)):
@@ -169,7 +167,7 @@ def pane_drop(cx, cy, rx, ry):
 # trickle tracks first, beads on top
 for i in range(34):
     x = rng.uniform(0, W)
-    y = rng.uniform(-30, 200)
+    y = rng.uniform(50, 280)
     ln = rng.uniform(30, 150)
     phase = rng.uniform(0, 6)
     wid = rng.uniform(.5, 1.0)
@@ -188,10 +186,10 @@ for i in range(34):
               rng.uniform(1.8, 3.0), rng.uniform(2.4, 4.0))
 for i in range(620):
     r = rng.random() ** 2.4 * 2.4 + .55
-    pane_drop(rng.uniform(0, W), rng.uniform(0, 292), r, r * rng.uniform(1.0, 1.35))
+    pane_drop(rng.uniform(0, W), rng.uniform(0, 372), r, r * rng.uniform(1.0, 1.35))
 
 # ---------------------------------------------------------------- wet stone sill with a mirror sheen
-SILL = 290
+SILL = 370
 src = bg.copy().filter(ImageFilter.GaussianBlur(2.2))
 sp = src.load()
 for y in range(SILL, H):
@@ -205,10 +203,12 @@ for y in range(SILL, H):
 for x in range(W):  # sill's lit front lip
     blend_px(px, x, SILL, (120, 170, 180), .35)
     blend_px(px, x, SILL + 1, (120, 170, 180), .14)
-shadow_ellipse(bg, CX + 4, 315, 110, 6, alpha=0.8, blur=4, color=(0, 4, 8))
+shadow_ellipse(bg, CX + 4, 395, 110, 6, alpha=0.8, blur=4, color=(0, 4, 8))
 # light the glass throws on the sill
-add_glow(bg, lambda dr: dr.ellipse((CX - 60, 312, CX + 110, 319), fill=(20, 68, 76)), 4, 1.0)
-vignette(bg, 0.42, 150, 150)
+add_glow(bg, lambda dr: dr.ellipse((CX - 60, 392, CX + 110, 399), fill=(20, 68, 76)), 4, 1.0)
+vignette(bg, 0.42, CX, 230)
+P = bg
+bg = hero_view(P, OY)
 
 # ---------------------------------------------------------------- oxidised copper frame
 COPPER = [(0, (30, 20, 16)), (.10, (78, 48, 34)), (.26, (176, 118, 84)), (.34, (120, 78, 56)),
@@ -294,9 +294,6 @@ for y in range(NECK + 1, TIP + 1):
 for x in range(CX - 4, CX + 4):
     over_px(fp, x, TIP, (225, 248, 252), .22)
 
-# ---------------------------------------------------------------- calm card behind the text
-rounded_panel(bg, 250, 6, 476, 314, 10, (4, 18, 26), 0.82, (130, 200, 205), 0.30)
-
 # drop the faintest veil of the front layer: invisible on screen, costly per pixel
 fp = front.load()
 for y in range(H):
@@ -304,7 +301,7 @@ for y in range(H):
         if fp[x, y][3] < 12:
             fp[x, y] = (0, 0, 0, 0)
 
-path = emit("water", bg, front, g, dyn=(CX - 72, 24, 144, 274))
+path = emit("water", bg, front, g, dyn=(CX - 72, 24, 144, 274), portrait=P, oy=OY, card=((4, 18, 26), 0.82, (130, 200, 205), 0.30))
 
 
 # ---------------------------------------------------------------- real caustics: photons through a rippled surface

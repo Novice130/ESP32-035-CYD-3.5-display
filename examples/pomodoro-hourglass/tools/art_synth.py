@@ -8,10 +8,11 @@ from hglib import *
 
 rng = random.Random(23)
 SS = 4
-CX, TOP, NECK, BOT = 112, 27, 160, 293
+CX, TOP, NECK, BOT = 160, 27, 160, 293
+OY = 80
 RMAX, RNECK, WALL = 69.0, 3.4, 3.0
 PLATE_HW, COLLAR_HW = 88, 72
-HORIZON = 244
+HORIZON = 324    # screen row
 NEON = (150, 126, 255)
 NEON_HOT = (214, 202, 255)
 VIOLET = (108, 74, 255)
@@ -87,13 +88,20 @@ def front_over(front, mask, color, gain=1.0):
     return Image.alpha_composite(front, layer)
 
 
-# ------------------------------------------------------------------ the void and the grid floor
+def to_screen(mask):
+    """A hero-space mask moved to screen rows, so its bloom can spread above the hero canvas."""
+    out = Image.new("L", (W, H), 0)
+    out.paste(mask, (0, OY))
+    return out
+
+
+# ------------------------------------------------------------------ the void and the grid floor (screen coordinates)
 bg = new_rgb((3, 3, 9))
 px = bg.load()
 for y in range(H):
     for x in range(W):
         # the faintest indigo lift behind the hourglass
-        d = math.hypot((x - CX) / 210, (y - 150) / 210)
+        d = math.hypot((x - CX) / 230, (y - 230) / 290)
         k = clamp(1 - d) ** 2
         px[x, y] = (int(3 + 11 * k), int(3 + 6 * k), int(9 + 26 * k))
 # a very sparse star field in the sky
@@ -129,8 +137,6 @@ for y in range(HORIZON, H):
     fade = 0.16 + 0.34 * t
     for x in range(W):
         v = gp[x, y] / 255 * fade
-        if x > 250:  # calmer behind the text
-            v *= 0.55
         fp[x, y] = (int(c[0] * v), int(c[1] * v), int(c[2] * v))
 bg = ImageChops.add(bg, floor)
 
@@ -149,7 +155,7 @@ for y in range(H):
 
 # pool of light on the floor under the base
 pool, d = hi_mask()
-d.ellipse(((CX - 96) * SS, 306 * SS, (CX + 96) * SS, 330 * SS), fill=150)
+d.ellipse(((CX - 96) * SS, 386 * SS, (CX + 96) * SS, 410 * SS), fill=150)
 bg = add_mask(bg, lo(pool).filter(ImageFilter.GaussianBlur(9)), (92, 54, 210), 0.9)
 
 # ------------------------------------------------------------------ baked neon halo
@@ -162,9 +168,12 @@ poly = side_points(0, sign=-1) + list(reversed(side_points(0, sign=1)))
 d.polygon(poly, fill=255)
 inner = lo(inner)
 
-bg = add_mask(bg, neon.filter(ImageFilter.GaussianBlur(22)), (84, 52, 255), 1.5)
-bg = add_mask(bg, neon.filter(ImageFilter.GaussianBlur(9)), (100, 66, 255), 1.15)
-bg = add_mask(bg, neon.filter(ImageFilter.GaussianBlur(3.2)), (124, 92, 255), 0.75)
+screen_neon = to_screen(neon)
+bg = add_mask(bg, screen_neon.filter(ImageFilter.GaussianBlur(22)), (84, 52, 255), 1.5)
+bg = add_mask(bg, screen_neon.filter(ImageFilter.GaussianBlur(9)), (100, 66, 255), 1.15)
+bg = add_mask(bg, screen_neon.filter(ImageFilter.GaussianBlur(3.2)), (124, 92, 255), 0.75)
+P = bg
+bg = hero_view(P, OY)
 
 # violet glass body: faint fill, thick fresnel where the wall curves away
 over(bg, inner, (36, 22, 92), 0.26)
@@ -192,9 +201,6 @@ for y0, hw in ((8, PLATE_HW - 5), (304, PLATE_HW - 5)):
     for x in range(CX - hw, CX + hw):
         d.point((x, y0), fill=int(255 * (1 - smooth(-0.1, 0.9, (x - CX) / hw))))
 over(bg, top_line.filter(ImageFilter.GaussianBlur(0.4)), NEON_HOT, 0.8)
-
-# ------------------------------------------------------------------ info card
-rounded_panel(bg, 250, 6, 476, 314, 12, (7, 5, 20), 0.86, (118, 92, 240), 0.42)
 
 # ------------------------------------------------------------------ front layer: wall and gloss
 front = new_front()
@@ -228,7 +234,7 @@ def vfade(mask, y0, y1, a0, a1):
     p = mask.load()
     for y in range(max(0, int(y0)), min(H, int(y1) + 1)):
         k = lerp(a0, a1, clamp((y - y0) / max(1, y1 - y0)))
-        for x in range(0, 230):
+        for x in range(0, W):
             if p[x, y]:
                 p[x, y] = int(p[x, y] * k)
     return mask
@@ -251,4 +257,4 @@ front = front_over(front, m, (206, 190, 255), 0.34)
 m = vfade(gloss(crescent(232, 284, 4, 7, sign=1), 1.0), 232, 284, 0.1, 0.9)
 front = front_over(front, m, (176, 160, 255), 0.3)
 
-emit("synth", bg, front, g, dyn=(CX - 81, 50, 162, 245))
+emit("synth", bg, front, g, dyn=(CX - 81, 50, 162, 245), portrait=P, oy=OY, card=((7, 5, 20), 0.86, (118, 92, 240), 0.42))

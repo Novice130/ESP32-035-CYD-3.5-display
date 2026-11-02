@@ -418,7 +418,7 @@ static void bodyRows(const SceneCtx& c, const State& st, int y0, int y1, float l
         const uint16_t* ca = st.ca[dp >> 1];
         const int K = st.lensK[row] * 256;  // 16.16
         int sx = (a.cx << 16) - (xl - a.cx) * K + (hg_isin(y * 7 + tk * 4) * wobAmp);
-        const uint16_t* src = a.bg + st.srcY[row] * SCR_W;
+        const uint16_t* src = art_bg_row(a, st.srcY[row]);
         int ss = 0;
         const int su = st.stepU[row];
         const int wob = HG_SIN[(y * 4 + tk * 2) & 255] >> 4;
@@ -601,10 +601,10 @@ static inline uint16_t lensPixel(const State& st, float nx, float ny, float d2) 
     int sx = a.cx - (int)(nx * 92 * bulge);
     int sy = 150 - (int)(ny * 118 * bulge);
     if (sx < 0) sx = 0;
-    if (sx > 239) sx = 239;
+    if (sx > SCR_W - 1) sx = SCR_W - 1;
     if (sy < 2) sy = 2;
     if (sy > 288) sy = 288;
-    uint16_t px = a.bg[sy * SCR_W + sx];
+    uint16_t px = art_bg_row(a, sy)[sx];
     px = mix565(px, st.dropTint, st.dropMix);
     // a real sphere: dark band just inside the rim, lit crescent where light collects at the far side
     if (d2 > 0.5f) {

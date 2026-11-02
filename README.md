@@ -127,7 +127,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 | Project / Environment | PlatformIO Env | Description | Direct Link |
 | :--- | :---: | :--- | :---: |
 | **Hardware Diagnostics** | `[env:cyd]` | Pinout verification, touch test, LDR light sensor, RGB LED cycle, and audio chime. | [`src/main.cpp`](src/main.cpp) |
-| **Pomodoro Hourglass** | `[env:pomodoro_hourglass]` | Focus timer with seven native-resolution hourglass scenes (fine sand, embers, water drops, ink, chemical titration, neon plasma, black hole), rotating quotes and a smart break prompt. Hold the screen or tap the light sensor for the next scene. | [`examples/pomodoro-hourglass/`](examples/pomodoro-hourglass/) |
+| **Pomodoro Hourglass** | `[env:pomodoro_hourglass]` | Portrait focus timer with seven native-resolution hourglass scenes (fine sand, embers, water drops, ink, chemical titration, neon plasma, black hole), rotating quotes and a smart break prompt. Hold the screen or tap the light sensor for the next scene. [Explainer for students](examples/pomodoro-hourglass/EXPLAINER.md). | [`examples/pomodoro-hourglass/`](examples/pomodoro-hourglass/) |
 | **Super Mario Bros Arcade** | `[env:mario_arcade]` | Mario platformer tribute: 32 levels (8 worlds), power-ups, Goombas / Koopas / Piranhas, flagpole. Plays itself; press JUMP / FIRE / RUN on the right edge to take over. | [`examples/mario-arcade/`](examples/mario-arcade/) |
 | **POKéMON Kalos Tribute** | `[env:pokemon_kalos]` | GBA-style Route walk + battles with Kalos starters and Xerneas / Yveltal / Zygarde. Plays itself; tap to play (1 tap / 2 taps). | [`examples/pokemon-kalos/`](examples/pokemon-kalos/) |
 | **Video Clip Player** | `[env:video_clip]` | Plays a looping video clip with sound: JPEG frames zoomed 2x (240x136, 15 fps) or 3x (160x90, for ~2.5 min clips), 8-bit audio through the DAC on GPIO 26. Convert your own video with `tools/make_clip.py`, or stream a whole video over Wi-Fi from a server. 1 tap = pause, 2 taps = mute, cover the light sensor = skip 4 s. | [`examples/video-clip/`](examples/video-clip/) |
@@ -154,7 +154,7 @@ The root of this repository is dedicated solely to the **Physical Board Hardware
 <tr><td align="center" colspan="2"><a href="examples/pomodoro-hourglass/"><img src="examples/pomodoro-hourglass/docs/screens.png" width="760" alt="Pomodoro Hourglass"></a><br><b>Pomodoro Hourglass (seven animated scenes, rotating quotes & smart break reminders)</b></td></tr>
 </table>
 
-<sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library. The Video Clip Player shows a frame of its built-in test pattern decoded the way the board draws it; the Cloud Game shows a frame rendered by its server's preview mode; the Parking Sensor gets its readings from a scripted stand-in for the sensor board.</sub>
+<sub>Each screenshot is the real firmware rendered by the desktop emulator in [`tools/cyd-emu/`](tools/cyd-emu/), which runs the example against the real TFT_eSPI library. The Video Clip Player shows a frame of its built-in test pattern decoded the way the board draws it; the Cloud Game shows a frame rendered by its server's preview mode; the Parking Sensor gets its readings from a scripted stand-in for the sensor board; the Pomodoro Hourglass comes from its own simulator, `tools/sim.cpp`, which runs the real engine.</sub>
 
 ---
 

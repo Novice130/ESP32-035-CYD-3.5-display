@@ -7,10 +7,11 @@ from PIL import Image, ImageDraw, ImageFilter
 from hglib import *
 
 rng = random.Random(1977)
-CX, TOP, NECK, BOT = 112, 15, 160, 305
+CX, TOP, NECK, BOT = 160, 15, 160, 305
+OY = 80
 RMAX = 84
 g = Glass(CX, TOP, NECK, BOT, classic_profile(TOP, NECK, BOT, RMAX, 2.8, belly=0.62, dome=0.30))
-DYN = (27, 40, 170, 235)
+DYN = (75, 40, 170, 235)
 
 
 # ---------------------------------------------------------------- value noise
@@ -58,14 +59,20 @@ for j in range(H // 2):
         a = smooth(0.46, 0.80, a)
         b = smooth(0.50, 0.78, b)
         # the clouds gather in a diagonal band through the hourglass
-        band = math.exp(-(((y - 150) - (x - 110) * 0.32) / 118.0) ** 2)
+        band = math.exp(-(((y - 240) - (x - 160) * 0.55) / 150.0) ** 2)
         c = (5, 6, 15)
         c = mixc(c, (44, 30, 96), a * band * 0.90)
         c = mixc(c, (118, 40, 96), a * b * band * 0.72)
         c = mixc(c, (18, 40, 88), b * (1 - a) * 0.50)
         lp[i, j] = tuple(int(v) for v in c)
-bg = lo.resize((W, H), Image.BICUBIC)
-vignette(bg, 0.45, 150, 150)
+P = lo.resize((W, H), Image.BICUBIC)
+vignette(P, 0.45, CX, 240)
+# stars above and below the hero canvas
+pp = P.load()
+for i in range(240):
+    y = rng.randrange(0, OY) if i % 2 else rng.randrange(OY + HERO_ROWS, H)
+    blend_px(pp, rng.randrange(W), y, rng.choice([(255, 255, 255), (214, 228, 255), (255, 240, 224)]), 0.12 + 0.8 * rng.random() ** 4.5)
+bg = hero_view(P, OY)
 
 # ---------------------------------------------------------------- the inside of the glass is a little darker
 px = bg.load()
@@ -81,8 +88,8 @@ for y in range(TOP, BOT + 1):
 # ---------------------------------------------------------------- fine stars
 WHITES = [(255, 255, 255), (214, 228, 255), (190, 210, 255), (255, 240, 224), (255, 218, 190)]
 twinkle = []
-for i in range(900):
-    x, y = rng.randrange(W), rng.randrange(H)
+for i in range(800):
+    x, y = rng.randrange(W), rng.randrange(HERO_ROWS)
     m = rng.random() ** 4.5
     c = rng.choice(WHITES)
     v = 0.12 + 0.80 * m
@@ -101,7 +108,7 @@ for i in range(900):
     if m > 0.45:
         blend_px(px, x + 1, y, c, v * 0.45)
 for i in range(11):   # a few big ones with a tiny halo, away from the text
-    x, y = rng.randrange(0, 248), rng.randrange(H)
+    x, y = rng.randrange(W), rng.randrange(HERO_ROWS)
     if abs(x - CX) < g.radius(y) + 4:
         continue
     c = rng.choice(WHITES)
@@ -199,10 +206,7 @@ for i in range(18):
     for dy in range(-5, 6):
         x = CX + side * g.radius(y + dy + .5)
         over_px(fp, int(x), y + dy, (225, 235, 255), v * math.exp(-(dy * dy) / 7.0))
-# ---------------------------------------------------------------- calm card for the text
-rounded_panel(bg, 250, 6, 476, 314, 12, (7, 8, 19), 0.88, (150, 160, 225), 0.30)
-
-path = emit("cosmos", bg, front, g, dyn=DYN)
+path = emit("cosmos", bg, front, g, dyn=DYN, portrait=P, oy=OY, card=((7, 8, 19), 0.88, (150, 160, 225), 0.30))
 
 
 # ================================================================ tables for the scene
@@ -295,7 +299,7 @@ for j in range(RH):
         ring += [int(ang / (2 * math.pi) * 256) & 255, min(255, int(total * 255))]
 
 # ---- newborn nebula: 5 bits of light + 3 bits of hue, and d, the moment each pixel is reached
-NEB_X, NEB_Y, NEB_W, NEB_H = 29, 190, 166, 84
+NEB_X, NEB_Y, NEB_W, NEB_H = 77, 190, 166, 84
 NEB_CX, NEB_CY = CX, 234
 neb = []
 for j in range(NEB_H):

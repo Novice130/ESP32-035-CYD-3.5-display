@@ -1,9 +1,9 @@
 // ==============================================================================
 // Project: ESP32-035 / CYD 3.5" (ESP32-3248S035R)
 // Role:    Pomodoro Hourglass - seven animated hourglass scenes, quotes, time tracker
-// Hardware: 3.5" 480x320 TFT (ST7796), XPT2046 Touch, RGB LED, LDR, Speaker
+// Hardware: 3.5" 320x480 portrait TFT (ST7796), XPT2046 Touch, RGB LED, LDR, Speaker
 //
-// Draws at the panel's native 480x320. Backgrounds live in flash; each frame only
+// Draws at the panel's native 320x480, standing up. Backgrounds live in flash; each frame only
 // the rectangle around the glass is rebuilt in RAM and pushed.
 // ==============================================================================
 
@@ -98,17 +98,23 @@ void plat_sfx(uint8_t id, uint16_t p) {
 
 // -----------------------------------------------------------------------------
 // LDR SENSOR DETECTOR
-// Measured at 0 dB on this CYD board: room ~0-20, fingertip over it 60-500
+// Measured at 0 dB on this CYD board: bright room ~0-20, fingertip over it 60-500.
+// A dim room reads ~700, with noise of +-50 and short dips to ~320, and the first read after boot
+// is far too low. So samples are averaged, the baseline settles before anything counts, and the
+// rise needed for a cover grows with the baseline.
 // - Brief Tap (< 1.2s): Next scene
 // - Medium Hold (1.5s - 4.9s): Restarts the hourglass session
 // - Long Hold (>= 5.0s): STOPS / PAUSES or RESUMES the timer!
 // -----------------------------------------------------------------------------
-#define LDR_COVER_RISE  45    // sensitive threshold so even a light touch/shadow triggers
+#define LDR_COVER_RISE  45    // smallest rise that counts, so a light touch works in a bright room
+#define LDR_SETTLE_MS   500   // ignore the sensor this long after the first poll
 #define LDR_RELEASE_MS  100   // debounce release
 #define LDR_STOP_MS     5000  // 5 seconds hold stops/pauses timer
 #define LDR_RESTART_MS  1500  // 1.5 - 4.9 seconds hold restarts timer
 
 static int ldrBase = -1;
+static long ldrAvgQ8 = -1;    // running average of the samples, times 256
+static unsigned long ldrFirstPoll = 0;
 static int ldrCurrent = 0;
 static bool ldrCovered = false;
 static unsigned long ldrCoveredAt = 0;
@@ -121,12 +127,16 @@ static bool ldrStopHandled = false;
 
 void pollLdr() {
     unsigned long now = millis();
-    int v = analogRead(CYD_LDR_PIN);
+    int raw = analogRead(CYD_LDR_PIN);
+    if (ldrAvgQ8 < 0) { ldrAvgQ8 = (long)raw << 8; ldrFirstPoll = now; }
+    ldrAvgQ8 += (((long)raw << 8) - ldrAvgQ8) / 32;  // about 6 ms at 5000 polls a second
+    int v = (int)(ldrAvgQ8 >> 8);
     ldrCurrent = v;
-    if (ldrBase < 0) ldrBase = v;
+    if (now - ldrFirstPoll < LDR_SETTLE_MS) { ldrBase = v; return; }
 
+    int rise = ldrBase / 4 > LDR_COVER_RISE ? ldrBase / 4 : LDR_COVER_RISE;
     if (!ldrCovered) {
-        if (v - ldrBase >= LDR_COVER_RISE) {
+        if (v - ldrBase >= rise) {
             ldrCovered = true;
             ldrCoveredAt = ldrLastDark = now;
             ldrStopHandled = false;
@@ -135,7 +145,7 @@ void pollLdr() {
             ldrBaseAt = now;
             ldrBase += (v - ldrBase) / 16; // slowly follow room ambient light
         }
-    } else if (v - ldrBase >= LDR_COVER_RISE / 2) {
+    } else if (v - ldrBase >= rise / 2) {
         ldrLastDark = now;
         unsigned long held = now - ldrCoveredAt;
 
@@ -275,7 +285,7 @@ void plat_push(int x, int y, int w, int h, const uint16_t* px, int stride) {
 // -----------------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
-    Serial.println("\n[ESP32-035] Starting Pomodoro Hourglass (native 480x320)...");
+    Serial.println("\n[ESP32-035] Starting Pomodoro Hourglass (portrait 320x480)...");
 
     // 1. Backlight on GPIO 27 (Active HIGH)
     pinMode(CYD_BACKLIGHT, OUTPUT);
@@ -297,16 +307,16 @@ void setup() {
     pinMode(XPT2046_CS, OUTPUT);
     digitalWrite(XPT2046_CS, HIGH);
 
-    // 5. TFT Display Initialisation (Landscape Rotation 1)
+    // 5. TFT Display Initialisation (Portrait. Use 2 instead of 0 to stand the board the other way up)
     tft.init();
-    tft.setRotation(1);
+    tft.setRotation(0);
     tft.setSwapBytes(true);
     tft.fillScreen(TFT_BLACK);
 
     // 6. Touch Controller Initialisation
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(touchSPI);
-    ts.setRotation(1);
+    ts.setRotation(1);   // only tap or no tap is used. touchDown() measures the crack short on this axis, keep it
 
     // 7. Work buffers
     heroBuf = (uint16_t*)malloc(HERO_MAX_PIXELS * 2);

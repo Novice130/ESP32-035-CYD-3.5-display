@@ -13,10 +13,16 @@ Newest first. Add to it whenever something costs more than a few minutes.
 - **Fix:** `board_build.flash_mode = qio` and `board_build.f_flash = 80000000L`, plus a per-row tile hash so only changed tiles go over SPI: 13.3 ms. Same scene. Booted fine on this board.
 - **Note:** the Mac `bench` is only a rough proxy (25 us there, about 13 ms total on the board). Log frame time from the board.
 
-### Unexplained: extra scene changes in one test run
-- **Symptom:** in one serial test run scenes skipped ahead, as if the sensor or touch had fired. That run did not log `[LDR]`/`[Touch]` lines.
-- **Evidence:** not reproduced in about 3 minutes of logged runs, including idle and the same key sequence. Cause not found.
-- **If it returns:** watch for `[LDR] Tap released` or `[Touch] Long press` in the serial log. A light change or hand near the sensor is the first suspect.
+### Timer paused itself: the light sensor gave false covers
+- **Symptom:** the timer stopped and restarted on its own about every 30 s. An earlier run saw scenes skip ahead, with no cause found at the time.
+- **Evidence:** `[DIAG]` min/max/average per second, nobody touching the board. First read after boot 292, then a steady average of 700 with peaks of 750 and dips to about 320. So the baseline locked at 292 and "covered" lasted until the 5 s pause fired. Later, noise alone crossed the fixed 45-count rise.
+- **Fix:** average the samples, settle the baseline for 0.5 s from the first poll (not from boot: `setup()` takes over 900 ms and my first try missed that), and require a rise of at least a quarter of the baseline. 100 s idle afterwards: no false events and the clock counted steadily.
+- **Still to check:** a real fingertip in a dim room. The needed rise at a baseline of 700 is now 175 counts.
+
+### Portrait moves a vertical crack to a horizontal one
+- **Symptom:** the crack at landscape x=240 is at y=240 in portrait, so it runs across any full-height layout.
+- **Fix:** stand the hourglass neck on it. Clock card above the glass, quote card below. Scenes keep their own y (`art.oy` moves them), so scene code did not change and a bronze glass with its neck at row 128 just uses a bigger `oy`.
+- **Note:** leave `ts.setRotation(1)` alone. `touchDown()` measures the crack short on that axis, and only tap or no tap is used.
 
 ## CYD Agent (examples/cyd-agent)
 

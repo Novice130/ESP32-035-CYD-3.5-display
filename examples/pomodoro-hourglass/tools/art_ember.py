@@ -6,7 +6,8 @@ from PIL import Image, ImageDraw, ImageFilter
 from hglib import *
 
 rng = random.Random(33)
-CX = 112
+CX = 160
+OY = 80
 TOP, NECK, BOT = 25, 160, 295
 RMAX, RNECK = 60.0, 3.0
 WALL = 2.4
@@ -29,20 +30,19 @@ def radius(y):
 g = Glass(CX, TOP, NECK, BOT, radius)
 
 # ---- night: deep navy, lifted softly behind the glass, grid fading towards the text
-bg = new_rgb()
-px = bg.load()
+P = new_rgb()
+px = P.load()
 for y in range(H):
     for x in range(W):
-        d = math.hypot((x - CX) / 210, (y - 160) / 210)
+        d = math.hypot((x - CX) / 230, (y - 240) / 300)
         k = clamp(1 - d) ** 1.6
         c = mixc((7, 10, 17), (15, 23, 38), k)
-        gx, gy = (x - CX + 160) % 20, (y - 160 + 160) % 20
-        line = 1.0 if gx == 0 or gy == 0 else 0.0
-        if line:
-            fade = 0.35 + 0.65 * (1 - smooth(200, 300, x))
-            c = mixc(c, (40, 58, 84), 0.22 * fade)
+        gx, gy = (x - CX + 160) % 20, y % 20
+        if gx == 0 or gy == 0:
+            c = mixc(c, (40, 58, 84), 0.22)
         px[x, y] = tuple(int(v) for v in c)
-vignette(bg, 0.5, 200, 160)
+vignette(P, 0.5, CX, 240)
+bg = hero_view(P, OY)
 
 
 def outline(d, color, width):
@@ -118,4 +118,4 @@ metal_bar(bg, CX - 73, CX + 73, 16, 25, COLLAR, radius=1.5, top_light=(84, 100, 
 metal_bar(bg, CX - 73, CX + 73, 295, 304, COLLAR, radius=1.5, top_light=(84, 100, 122), bottom_dark=(10, 14, 20))
 metal_bar(bg, CX - 84, CX + 84, 304, 314, PLATE, radius=3.5, top_light=LIGHT, bottom_dark=DARK)
 
-emit("ember", bg, front, g, dyn=(CX - 72, 24, 144, 272))
+emit("ember", bg, front, g, dyn=(CX - 72, 24, 144, 272), portrait=P, oy=OY, card=((7, 10, 17), 0.70, (84, 100, 120), 0.32))

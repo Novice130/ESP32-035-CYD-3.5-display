@@ -1,5 +1,5 @@
 // ==============================================================================
-//  pomodoro.h - Pomodoro state machine, right-hand info panel and frame composer.
+//  pomodoro.h - Pomodoro state machine, text cards and frame composer.
 //  Pure C++: runs identically in the macOS simulator and on the CYD.
 // ==============================================================================
 #pragma once
@@ -32,7 +32,7 @@ static const uint8_t DEFAULT_DURATION_INDEX = 6;
 static uint16_t* heroBuf = nullptr;  // HERO_MAX_PIXELS
 static uint16_t* uiBuf = nullptr;    // UI_BUF_PIXELS
 static uint8_t* sceneArena = nullptr;
-#define UI_BUF_PIXELS (PANEL_W * 110)
+#define UI_BUF_PIXELS (PANEL_W * 80)
 
 class PomodoroEngine {
 public:
@@ -278,23 +278,36 @@ public:
         }
     }
 
-    // ---------------------------------------------------------------- right-hand panel
-    // Bands, top to bottom. Text never crosses PANEL_X, so nothing sits on the crack.
-    static const int Y_HEAD = 10, H_HEAD = 34;
-    static const int Y_TIME = 44, H_TIME = 72;
-    static const int Y_BAR = 116, H_BAR = 42;
-    static const int Y_TEXT = 158, H_TEXT = 154;
+    // ---------------------------------------------------------------- text cards
+    // Top card: big clock on the left, status column on the right, progress bar under both.
+    // Bottom card: quote, praise or the break question. Both stay clear of the crack at y=240.
+    struct Band { int16_t x, y, w, h; };
+    static const Band& bandRect(int band) {
+        static const Band R[NUM_BANDS] = {
+            {212, 7, 96, 58},    // BAND_HEAD
+            {12, 5, 198, 60},    // BAND_TIME
+            {14, 66, 292, 8},    // BAND_BAR
+            {12, 404, PANEL_W, 72},  // BAND_TEXT
+        };
+        return R[band];
+    }
+
+    uint32_t percentDone() const {
+        uint32_t rem = state == STATE_BREAK ? breakRemainingSec : sessionRemainingSec;
+        uint32_t target = state == STATE_BREAK ? breakTargetSec : sessionTargetSec;
+        return target ? (target - rem) * 100 / target : 0;
+    }
 
     uint32_t bandSignature(int band) const {
         uint32_t rem = state == STATE_BREAK ? breakRemainingSec : sessionRemainingSec;
         bool blink = isPaused && ((tick / 15) & 1);
         switch (band) {
-            case BAND_HEAD: return state | (isPaused << 2) | (durationIndex << 3) | ((timeToastTicks > 0) << 8);
+            case BAND_HEAD: return state | (isPaused << 2) | (durationIndex << 3) | ((timeToastTicks > 0) << 8)
+                                   | (percentDone() << 9) | ((totalWorkSeconds / 60) << 16);
             case BAND_TIME: return rem | (blink << 20);
             case BAND_BAR: {
                 uint32_t target = state == STATE_BREAK ? breakTargetSec : sessionTargetSec;
-                uint32_t bar = target ? (target - rem) * PANEL_W / target : 0;
-                return bar | ((totalWorkSeconds / 60) << 9);
+                return target ? (target - rem) * PANEL_W / target : 0;
             }
             default: {
                 if (state == STATE_ASK_BREAK) return 0x40000000u | (askBreakTimeoutSec - askBreakTicks / TICK_HZ);
@@ -310,19 +323,22 @@ public:
         const UiTheme& th = sc.ui;
         bool brk = state == STATE_BREAK;
         uint16_t accent = brk ? th.accentBrk : th.accent;
-        const int X = PANEL_X + 4;
-        const int RW = PANEL_W - 8;
+        const Band& R = bandRect(band);
 
         if (band == BAND_HEAD) {
             const char* label = isPaused ? "PAUSED" : state == STATE_ASK_BREAK ? "DONE" : brk ? "BREAK" : "FOCUS";
             uint16_t chip = isPaused ? th.alert : accent;
-            int tw = textWidth(FONT_SMALL, label);
-            drawPill(s, X, Y_HEAD + 8, tw + 20, 22, chip);
-            drawText(s, X + 10, Y_HEAD + 10, FONT_SMALL, label, th.chipInk);
+            drawPill(s, R.x, R.y, textWidth(FONT_SMALL, label) + 20, 22, chip);
+            drawText(s, R.x + 10, R.y + 2, FONT_SMALL, label, th.chipInk);
             char buf[24];
             snprintf(buf, sizeof(buf), "%u min", DURATIONS_MIN[durationIndex]);
-            int w = textWidth(FONT_TXT, buf);
-            drawText(s, X + RW - w, Y_HEAD + 8, FONT_TXT, buf, timeToastTicks ? accent : th.dim);
+            drawText(s, R.x, R.y + 22, FONT_TXT, buf, timeToastTicks ? accent : th.dim);
+            snprintf(buf, sizeof(buf), "%u%%", (unsigned)percentDone());
+            drawText(s, R.x + R.w - textWidth(FONT_SMALL, buf), R.y + 26, FONT_SMALL, buf, th.dim);
+            uint32_t totalMin = totalWorkSeconds / 60;
+            if (totalMin >= 60) snprintf(buf, sizeof(buf), "Work %uh %02um", (unsigned)(totalMin / 60), (unsigned)(totalMin % 60));
+            else snprintf(buf, sizeof(buf), "Worked %um", (unsigned)totalMin);
+            drawText(s, R.x, R.y + 42, FONT_SMALL, buf, th.dim);
         } else if (band == BAND_TIME) {
             uint32_t rem = brk ? breakRemainingSec : sessionRemainingSec;
             char buf[12];
@@ -330,63 +346,53 @@ public:
             bool wide = rem / 60 > 99;   // 120:00 only fits in the smaller digits
             if (wide) snprintf(buf, sizeof(buf), "%u:%02u", (unsigned)(rem / 60), (unsigned)(rem % 60));
             const Font& big = wide ? FONT_BIG3 : FONT_BIG;
-            int w = textWidth(big, buf);
             bool hide = isPaused && ((tick / 15) & 1);
-            drawText(s, X + (RW - w) / 2, wide ? Y_TIME + 4 : Y_TIME - 6, big, buf, hide ? th.dim : th.ink);
+            drawText(s, R.x + 2, wide ? R.y - 7 : R.y - 18, big, buf, hide ? th.dim : th.ink);
         } else if (band == BAND_BAR) {
             uint32_t rem = brk ? breakRemainingSec : sessionRemainingSec;
             uint32_t target = brk ? breakTargetSec : sessionTargetSec;
-            int fill = target ? (int)((target - rem) * (uint32_t)RW / target) : 0;
-            drawPill(s, X, Y_BAR + 4, RW, 6, th.track);
-            if (fill >= 6) drawPill(s, X, Y_BAR + 4, fill, 6, accent);
-            char buf[32];
-            uint32_t totalMin = totalWorkSeconds / 60;
-            if (totalMin >= 60) snprintf(buf, sizeof(buf), "Worked %uh %02um", (unsigned)(totalMin / 60), (unsigned)(totalMin % 60));
-            else snprintf(buf, sizeof(buf), "Worked %um", (unsigned)totalMin);
-            drawText(s, X, Y_BAR + 16, FONT_SMALL, buf, th.dim);
-            snprintf(buf, sizeof(buf), "%u%%", target ? (unsigned)((target - rem) * 100 / target) : 0);
-            int w = textWidth(FONT_SMALL, buf);
-            drawText(s, X + RW - w, Y_BAR + 16, FONT_SMALL, buf, th.dim);
+            int fill = target ? (int)((target - rem) * (uint32_t)R.w / target) : 0;
+            drawPill(s, R.x, R.y + 1, R.w, 6, th.track);
+            if (fill >= 6) drawPill(s, R.x, R.y + 1, fill, 6, accent);
         } else {
-            int y = Y_TEXT + 8;
+            const int X = R.x + 2, RW = R.w - 4;
+            int y = R.y;
             if (state == STATE_ASK_BREAK) {
-                drawText(s, X, y, FONT_MED, "Take a break?", accent);
-                char buf[40];
-                snprintf(buf, sizeof(buf), "%u minutes, you earned it.", (unsigned)(breakTargetSec / 60));
-                drawText(s, X, y + 34, FONT_TXT, buf, th.ink);
-                drawText(s, X, y + 66, FONT_TXT, "Tap the screen to rest.", th.ink);
+                drawText(s, X, y - 2, FONT_MED, "Take a break?", accent);
+                char buf[48];
+                snprintf(buf, sizeof(buf), "%u minutes. Tap the screen to rest.", (unsigned)(breakTargetSec / 60));
+                drawText(s, X, y + 28, FONT_TXT, buf, th.ink);
                 snprintf(buf, sizeof(buf), "Next session starts in %us", (unsigned)(askBreakTimeoutSec - askBreakTicks / TICK_HZ));
-                drawText(s, X, y + 110, FONT_SMALL, buf, th.dim);
+                drawText(s, X, y + 52, FONT_SMALL, buf, th.dim);
             } else if (sceneToastTicks) {
-                drawText(s, X, y + 24, FONT_MED, sc.name, accent);
-                drawWrapped(s, X, y + 58, RW, 22, FONT_TXT, sc.tagline, th.ink, 3);
+                drawText(s, X, y + 2, FONT_MED, sc.name, accent);
+                drawWrapped(s, X, y + 32, RW, 20, FONT_TXT, sc.tagline, th.ink, 2);
             } else if (praiseDisplayTicks) {
-                drawText(s, X, y, FONT_SMALL, "MILESTONE", accent);
-                drawWrapped(s, X, y + 22, RW, 24, FONT_TXT, praiseText, th.ink, 4, quoteFade * 17);
+                drawText(s, X, y + 2, FONT_SMALL, "MILESTONE", accent);
+                drawWrapped(s, X, y + 22, RW, 21, FONT_TXT, praiseText, th.ink, 2, quoteFade * 17);
             } else {
                 const Quote& q = INSPIRATIONAL_QUOTES[currentQuoteIndex];
                 int a = quoteFade * 17;
-                int bottom = drawWrapped(s, X, y, RW, 23, FONT_TXT, q.text, th.ink, 5, a);
+                int bottom = drawWrapped(s, X, y - 2, RW, 19, FONT_TXT, q.text, th.ink, 3, a);
                 char buf[64];
                 snprintf(buf, sizeof(buf), "- %s", q.author);
-                drawText(s, X, bottom + 4, FONT_SMALL, buf, th.dim, a);
+                drawText(s, X, bottom + 2, FONT_SMALL, buf, th.dim, a);
             }
         }
     }
 
     void paintBand(int band) {
-        static const int ys[NUM_BANDS] = {Y_HEAD, Y_TIME, Y_BAR, Y_TEXT};
-        static const int hs[NUM_BANDS] = {H_HEAD, H_TIME, H_BAR, H_TEXT};
+        const Band& R = bandRect(band);
         const SceneArt& a = *SCENES[currentScene]->art;
-        const int maxRows = UI_BUF_PIXELS / PANEL_W;
-        for (int y = ys[band]; y < ys[band] + hs[band]; y += maxRows) {
-            int h = ys[band] + hs[band] - y;
+        const int maxRows = UI_BUF_PIXELS / R.w;
+        for (int y = R.y; y < R.y + R.h; y += maxRows) {
+            int h = R.y + R.h - y;
             if (h > maxRows) h = maxRows;
-            Surf s = {uiBuf, PANEL_X, y, PANEL_W, h};
-            const uint16_t* src = a.bg + y * SCR_W + PANEL_X;
-            for (int r = 0; r < h; r++) memcpy(uiBuf + r * PANEL_W, src + r * SCR_W, PANEL_W * 2);
+            Surf s = {uiBuf, R.x, y, R.w, h};
+            const uint16_t* src = a.bg + y * SCR_W + R.x;
+            for (int r = 0; r < h; r++) memcpy(uiBuf + r * R.w, src + r * SCR_W, R.w * 2);
             paintPanel(s, band);
-            plat_push(PANEL_X, y, PANEL_W, h, uiBuf, PANEL_W);
+            plat_push(R.x, y, R.w, h, uiBuf, R.w);
         }
     }
 
@@ -394,7 +400,7 @@ public:
     // The rectangle is cut into tiles per row and each tile hashed. Rows whose changed range
     // matches the previous row are grouped, so a still bulb costs almost no SPI time.
     enum { HERO_TILES = 6 };
-    uint16_t tileHash[SCR_H][HERO_TILES];
+    uint16_t tileHash[HERO_ROWS][HERO_TILES];
 
     void pushHeroDirty(const SceneArt& a) {
         const int tw = (a.dw + HERO_TILES - 1) / HERO_TILES;
@@ -420,7 +426,7 @@ public:
             if (runY >= 0 && !same) {
                 int x0 = runA * tw, x1 = (runB + 1) * tw;
                 if (x1 > a.dw) x1 = a.dw;
-                plat_push(a.dx + x0, a.dy + runY, x1 - x0, y - runY, heroBuf + runY * a.dw + x0, a.dw);
+                plat_push(a.dx + x0, a.dy + a.oy + runY, x1 - x0, y - runY, heroBuf + runY * a.dw + x0, a.dw);
                 runY = -1;
             }
             if (runY < 0 && last >= 0) { runY = y; runA = first; runB = last; }
@@ -432,7 +438,7 @@ public:
         const Scene& sc = *SCENES[currentScene];
         const SceneArt& a = *sc.art;
         if (wipeX >= 0) {   // new background slides in, column by column
-            int w = 48;
+            int w = 32;
             if (wipeX + w > SCR_W) w = SCR_W - wipeX;
             plat_push(wipeX, 0, w, SCR_H, a.bg + wipeX, SCR_W);
             wipeX += w;

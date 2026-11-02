@@ -10,7 +10,8 @@ from hglib import *
 rng = random.Random(1188)
 SS = 8
 
-CX, TOP, NECK, BOT = 112, 28, 160, 292
+CX, TOP, NECK, BOT = 160, 28, 160, 292
+OY = 80
 RMAX, RNECK = 73.5, 4.8
 BELLY = 0.70
 FILL = 0.66
@@ -133,10 +134,10 @@ cap_cov = down(cap_m)
 def paper():
     img = new_rgb(PAPER)
     # large, soft mottling: pulp density. Low-frequency random field, upscaled.
-    field = Image.new("L", (30, 20))
+    field = Image.new("L", (20, 30))
     fp = field.load()
-    for y in range(20):
-        for x in range(30):
+    for y in range(30):
+        for x in range(20):
             fp[x, y] = 128 + rng.randint(-60, 60)
     field = field.resize((W, H), Image.BICUBIC).filter(ImageFilter.GaussianBlur(9))
     # fibres: short curved hairs, some darker, some lighter, supersampled
@@ -163,12 +164,13 @@ def paper():
             k = (fi[x, y] - 128) * 0.035 - da[x, y] * 0.05 + li[x, y] * 0.045
             r, gg, b = PAPER
             # very gentle fall-off to the corners: the sheet is lit from upper right
-            f = 1.0 - 0.035 * smooth(0.45, 1.25, math.hypot((x - 330) / 330, (y - 90) / 250))
+            f = 1.0 - 0.035 * smooth(0.45, 1.25, math.hypot((x - 260) / 300, (y - 90) / 400))
             p[x, y] = tuple(int(clamp(v, 0, 255)) for v in (r * f + k, gg * f + k * 0.97, b * f + k * 0.88))
     return img
 
 
-bg = paper()
+P = paper()
+bg = hero_view(P, OY)
 
 
 # ------------------------------------------------------------------ enso behind the glass
@@ -248,7 +250,7 @@ for hw, y0, y1, r, col in CAPS:
 SEAL = (172, 66, 46)
 seal_m = new_mask()
 ds2 = ImageDraw.Draw(seal_m)
-sx, sy, ss_ = 210, 296, 15
+sx, sy, ss_ = 262, 296, 15
 round_rect(ds2, sx, sy, sx + ss_, sy + ss_, 1.6)
 # knock out a tiny hourglass in the seal
 poly(ds2, [(sx + 3.6, sy + 3.2), (sx + ss_ - 3.6, sy + 3.2), (sx + ss_ / 2 + .6, sy + ss_ / 2),
@@ -267,7 +269,7 @@ front = Image.new("RGBA", (W, H), INK + (0,))
 front.putalpha(wall_cov)
 
 dyn = (CX - 75, TOP, 150, BOT - TOP + 1)
-path = emit("zen", bg, front, g, dyn=dyn)
+path = emit("zen", bg, front, g, dyn=dyn, portrait=P, oy=OY)
 
 
 # ------------------------------------------------------------------ tables, appended after the art
